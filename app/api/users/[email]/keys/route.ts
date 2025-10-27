@@ -1,0 +1,38 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { supabase } from '@/lib/supabase';
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { email: string } }
+) {
+  try {
+    const email = decodeURIComponent(params.email);
+
+    // Fetch all keys for this email
+    const { data: keys, error } = await supabase
+      .from('license_keys')
+      .select('*')
+      .eq('customer_email', email)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      return NextResponse.json(
+        { error: 'Failed to fetch keys' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: keys || [],
+      email: email,
+    });
+  } catch (error) {
+    console.error('Error fetching keys for user:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
