@@ -4,6 +4,10 @@ import { generateLicenseKey } from '@/lib/key-generator';
 import { CreateLicenseKeyInput } from '@/lib/types';
 import { sendTrialKeyEmail } from '@/lib/email-service';
 
+// Disable caching for this route
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // GET all license keys with optional search
 export async function GET(request: NextRequest) {
   try {
@@ -25,7 +29,16 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
-    return NextResponse.json({ data });
+    return NextResponse.json(
+      { data },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      }
+    );
   } catch (error: any) {
     console.error('Error fetching license keys:', error);
     return NextResponse.json(

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { LicenseKey } from '@/lib/types';
 import { format } from 'date-fns';
+import { InputModal, ConfirmModal, AlertModal } from '@/components/Modal';
 
 export default function UserDetailPage() {
   const params = useParams();
@@ -13,10 +14,22 @@ export default function UserDetailPage() {
   const [keys, setKeys] = useState<LicenseKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  
+  // Modal states
+  const [extendModal, setExtendModal] = useState<{ isOpen: boolean; keyId: string | null }>({ isOpen: false, keyId: null });
+  const [dealClosedModal, setDealClosedModal] = useState<{ isOpen: boolean; keyId: string | null }>({ isOpen: false, keyId: null });
+  const [disableModal, setDisableModal] = useState<{ isOpen: boolean; keyId: string | null }>({ isOpen: false, keyId: null });
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; type: 'success' | 'error' | 'info' }>({ 
+    isOpen: false, title: '', message: '', type: 'info' 
+  });
 
   const fetchKeys = async () => {
     try {
-      const response = await fetch(`/api/users/${encodeURIComponent(email)}/keys`);
+      // Add timestamp to prevent caching
+      const timestamp = new Date().getTime();
+      const response = await fetch(`/api/users/${encodeURIComponent(email)}/keys?_t=${timestamp}`, {
+        cache: 'no-store',
+      });
       const result = await response.json();
       
       if (response.ok) {
@@ -33,9 +46,9 @@ export default function UserDetailPage() {
     fetchKeys();
   }, [email]);
 
-  const handleExtendKey = async (keyId: string) => {
-    const days = prompt('Enter number of days to extend (default: 7):', '7');
-    if (!days) return;
+  const handleExtendKey = async (days: string) => {
+    const keyId = extendModal.keyId;
+    if (!keyId) return;
 
     setActionLoading(keyId);
     try {
@@ -47,25 +60,21 @@ export default function UserDetailPage() {
 
       if (response.ok) {
         await fetchKeys();
-        alert('Key extended successfully!');
+        setAlertModal({ isOpen: true, title: 'Success', message: 'Key extended successfully!', type: 'success' });
       } else {
         const result = await response.json();
-        alert(`Error: ${result.error}`);
+        setAlertModal({ isOpen: true, title: 'Error', message: result.error, type: 'error' });
       }
     } catch (error) {
-      alert('Failed to extend key');
+      setAlertModal({ isOpen: true, title: 'Error', message: 'Failed to extend key', type: 'error' });
     } finally {
       setActionLoading(null);
     }
   };
 
-  const handleDealClosed = async (keyId: string) => {
-    const limit = prompt('Enter Active Flows Limit:', '1000');
-    if (!limit) return;
-
-    if (!confirm('This will convert the trial key to development and create a new production key. Continue?')) {
-      return;
-    }
+  const handleDealClosed = async (limit: string) => {
+    const keyId = dealClosedModal.keyId;
+    if (!keyId) return;
 
     setActionLoading(keyId);
     try {
@@ -77,22 +86,26 @@ export default function UserDetailPage() {
 
       if (response.ok) {
         await fetchKeys();
-        alert('Deal closed successfully! Welcome email sent to customer.');
+        setAlertModal({ 
+          isOpen: true, 
+          title: 'Success', 
+          message: 'Deal closed successfully! Welcome email sent to customer with development and production keys.', 
+          type: 'success' 
+        });
       } else {
         const result = await response.json();
-        alert(`Error: ${result.error}`);
+        setAlertModal({ isOpen: true, title: 'Error', message: result.error, type: 'error' });
       }
     } catch (error) {
-      alert('Failed to close deal');
+      setAlertModal({ isOpen: true, title: 'Error', message: 'Failed to close deal', type: 'error' });
     } finally {
       setActionLoading(null);
     }
   };
 
-  const handleDisableKey = async (keyId: string) => {
-    if (!confirm('Are you sure you want to disable this key?')) {
-      return;
-    }
+  const handleDisableKey = async () => {
+    const keyId = disableModal.keyId;
+    if (!keyId) return;
 
     setActionLoading(keyId);
     try {
@@ -102,13 +115,13 @@ export default function UserDetailPage() {
 
       if (response.ok) {
         await fetchKeys();
-        alert('Key disabled successfully!');
+        setAlertModal({ isOpen: true, title: 'Success', message: 'Key disabled successfully!', type: 'success' });
       } else {
         const result = await response.json();
-        alert(`Error: ${result.error}`);
+        setAlertModal({ isOpen: true, title: 'Error', message: result.error, type: 'error' });
       }
     } catch (error) {
-      alert('Failed to disable key');
+      setAlertModal({ isOpen: true, title: 'Error', message: 'Failed to disable key', type: 'error' });
     } finally {
       setActionLoading(null);
     }
@@ -122,13 +135,13 @@ export default function UserDetailPage() {
       });
 
       if (response.ok) {
-        alert('Email sent successfully!');
+        setAlertModal({ isOpen: true, title: 'Success', message: 'Email sent successfully!', type: 'success' });
       } else {
         const result = await response.json();
-        alert(`Error: ${result.error}`);
+        setAlertModal({ isOpen: true, title: 'Error', message: result.error, type: 'error' });
       }
     } catch (error) {
-      alert('Failed to send email');
+      setAlertModal({ isOpen: true, title: 'Error', message: 'Failed to send email', type: 'error' });
     } finally {
       setActionLoading(null);
     }
@@ -271,6 +284,9 @@ export default function UserDetailPage() {
                     getKeyTypeBadge={getKeyTypeBadge}
                     formatDate={formatDate}
                     getEnabledFeatures={getEnabledFeatures}
+                    setExtendModal={setExtendModal}
+                    setDealClosedModal={setDealClosedModal}
+                    setDisableModal={setDisableModal}
                   />
                 ))}
               </div>
@@ -299,6 +315,9 @@ export default function UserDetailPage() {
                     getKeyTypeBadge={getKeyTypeBadge}
                     formatDate={formatDate}
                     getEnabledFeatures={getEnabledFeatures}
+                    setExtendModal={setExtendModal}
+                    setDealClosedModal={setDealClosedModal}
+                    setDisableModal={setDisableModal}
                   />
                 ))}
               </div>
@@ -327,6 +346,9 @@ export default function UserDetailPage() {
                     getKeyTypeBadge={getKeyTypeBadge}
                     formatDate={formatDate}
                     getEnabledFeatures={getEnabledFeatures}
+                    setExtendModal={setExtendModal}
+                    setDealClosedModal={setDealClosedModal}
+                    setDisableModal={setDisableModal}
                   />
                 ))}
               </div>
@@ -334,6 +356,50 @@ export default function UserDetailPage() {
           )}
         </>
       )}
+
+      {/* Modals */}
+      <InputModal
+        isOpen={extendModal.isOpen}
+        onClose={() => setExtendModal({ isOpen: false, keyId: null })}
+        onSubmit={handleExtendKey}
+        title="Extend Trial Key"
+        message="Enter the number of days to extend this trial key:"
+        placeholder="7"
+        defaultValue="7"
+        inputType="number"
+        submitText="Extend"
+      />
+
+      <InputModal
+        isOpen={dealClosedModal.isOpen}
+        onClose={() => setDealClosedModal({ isOpen: false, keyId: null })}
+        onSubmit={handleDealClosed}
+        title="Deal Closed"
+        message="Enter the Active Flows Limit for this customer:"
+        placeholder="1000"
+        defaultValue="1000"
+        inputType="number"
+        submitText="Close Deal"
+      />
+
+      <ConfirmModal
+        isOpen={disableModal.isOpen}
+        onClose={() => setDisableModal({ isOpen: false, keyId: null })}
+        onConfirm={handleDisableKey}
+        title="Disable Key"
+        message="Are you sure you want to disable this license key? This action can be reversed later."
+        confirmText="Disable"
+        cancelText="Cancel"
+        confirmColor="red"
+      />
+
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </div>
   );
 }
@@ -350,6 +416,9 @@ interface KeyCardProps {
   getKeyTypeBadge: (type: string) => JSX.Element;
   formatDate: (date: string | null) => string;
   getEnabledFeatures: (features: Record<string, boolean>) => string[];
+  setExtendModal: (state: { isOpen: boolean; keyId: string | null }) => void;
+  setDealClosedModal: (state: { isOpen: boolean; keyId: string | null }) => void;
+  setDisableModal: (state: { isOpen: boolean; keyId: string | null }) => void;
 }
 
 function KeyCard({
@@ -363,6 +432,9 @@ function KeyCard({
   getKeyTypeBadge,
   formatDate,
   getEnabledFeatures,
+  setExtendModal,
+  setDealClosedModal,
+  setDisableModal,
 }: KeyCardProps) {
   return (
     <div className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
@@ -432,14 +504,14 @@ function KeyCard({
         {licenseKey.status === 'active' && licenseKey.key_type === 'trial' && (
           <>
             <button
-              onClick={() => onExtend(licenseKey.id)}
+              onClick={() => setExtendModal({ isOpen: true, keyId: licenseKey.id })}
               disabled={actionLoading === licenseKey.id}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
             >
               Extend Trial
             </button>
             <button
-              onClick={() => onDealClosed(licenseKey.id)}
+              onClick={() => setDealClosedModal({ isOpen: true, keyId: licenseKey.id })}
               disabled={actionLoading === licenseKey.id}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
             >
@@ -458,7 +530,7 @@ function KeyCard({
         )}
         {licenseKey.status !== 'disabled' && (
           <button
-            onClick={() => onDisable(licenseKey.id)}
+            onClick={() => setDisableModal({ isOpen: true, keyId: licenseKey.id })}
             disabled={actionLoading === licenseKey.id}
             className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
           >
