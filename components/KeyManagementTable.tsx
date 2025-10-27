@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { LicenseKey } from '@/lib/types';
 import { format } from 'date-fns';
 import { InputModal, ConfirmModal, AlertModal } from '@/components/Modal';
+import { EditKeyModal } from '@/components/EditKeyModal';
 
 export default function KeyManagementTable() {
   const router = useRouter();
@@ -17,6 +18,7 @@ export default function KeyManagementTable() {
   const [extendModal, setExtendModal] = useState<{ isOpen: boolean; keyId: string | null }>({ isOpen: false, keyId: null });
   const [dealClosedModal, setDealClosedModal] = useState<{ isOpen: boolean; keyId: string | null }>({ isOpen: false, keyId: null });
   const [disableModal, setDisableModal] = useState<{ isOpen: boolean; keyId: string | null }>({ isOpen: false, keyId: null });
+  const [editModal, setEditModal] = useState<{ isOpen: boolean; key: LicenseKey | null }>({ isOpen: false, key: null });
   const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; type: 'success' | 'error' | 'info' }>({ 
     isOpen: false, title: '', message: '', type: 'info' 
   });
@@ -150,6 +152,37 @@ export default function KeyManagementTable() {
       }
     } catch (error) {
       setAlertModal({ isOpen: true, title: 'Error', message: 'Failed to send email', type: 'error' });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleEditKey = async (updatedData: Partial<LicenseKey>) => {
+    const keyId = editModal.key?.id;
+    if (!keyId) return;
+
+    setActionLoading(keyId);
+    try {
+      const response = await fetch(`/api/keys/${keyId}/edit`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedData),
+      });
+
+      if (response.ok) {
+        await fetchKeys();
+        setAlertModal({ 
+          isOpen: true, 
+          title: 'Success', 
+          message: 'License key updated successfully!', 
+          type: 'success' 
+        });
+      } else {
+        const result = await response.json();
+        setAlertModal({ isOpen: true, title: 'Error', message: result.error, type: 'error' });
+      }
+    } catch (error) {
+      setAlertModal({ isOpen: true, title: 'Error', message: 'Failed to update license key', type: 'error' });
     } finally {
       setActionLoading(null);
     }
@@ -315,7 +348,15 @@ export default function KeyManagementTable() {
                     {formatDate(key.expires_at)}
                   </td>
                   <td className="px-4 py-4 text-sm">
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
+                      <button
+                        onClick={() => setEditModal({ isOpen: true, key })}
+                        disabled={actionLoading === key.id}
+                        className="text-gray-600 hover:text-gray-800 disabled:text-gray-400"
+                        title="Edit Key"
+                      >
+                        ✏️
+                      </button>
                       {key.status === 'active' && key.key_type === 'trial' && (
                         <>
                           <button
@@ -414,6 +455,13 @@ export default function KeyManagementTable() {
         title={alertModal.title}
         message={alertModal.message}
         type={alertModal.type}
+      />
+
+      <EditKeyModal
+        isOpen={editModal.isOpen}
+        onClose={() => setEditModal({ isOpen: false, key: null })}
+        onSave={handleEditKey}
+        licenseKey={editModal.key}
       />
     </div>
   );

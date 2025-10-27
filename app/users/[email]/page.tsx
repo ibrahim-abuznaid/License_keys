@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { LicenseKey } from '@/lib/types';
 import { format } from 'date-fns';
 import { InputModal, ConfirmModal, AlertModal } from '@/components/Modal';
+import { EditKeyModal } from '@/components/EditKeyModal';
 
 export default function UserDetailPage() {
   const params = useParams();
@@ -19,6 +20,7 @@ export default function UserDetailPage() {
   const [extendModal, setExtendModal] = useState<{ isOpen: boolean; keyId: string | null }>({ isOpen: false, keyId: null });
   const [dealClosedModal, setDealClosedModal] = useState<{ isOpen: boolean; keyId: string | null }>({ isOpen: false, keyId: null });
   const [disableModal, setDisableModal] = useState<{ isOpen: boolean; keyId: string | null }>({ isOpen: false, keyId: null });
+  const [editModal, setEditModal] = useState<{ isOpen: boolean; key: LicenseKey | null }>({ isOpen: false, key: null });
   const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; type: 'success' | 'error' | 'info' }>({ 
     isOpen: false, title: '', message: '', type: 'info' 
   });
@@ -142,6 +144,37 @@ export default function UserDetailPage() {
       }
     } catch (error) {
       setAlertModal({ isOpen: true, title: 'Error', message: 'Failed to send email', type: 'error' });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleEditKey = async (updatedData: Partial<LicenseKey>) => {
+    const keyId = editModal.key?.id;
+    if (!keyId) return;
+
+    setActionLoading(keyId);
+    try {
+      const response = await fetch(`/api/keys/${keyId}/edit`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedData),
+      });
+
+      if (response.ok) {
+        await fetchKeys();
+        setAlertModal({ 
+          isOpen: true, 
+          title: 'Success', 
+          message: 'License key updated successfully!', 
+          type: 'success' 
+        });
+      } else {
+        const result = await response.json();
+        setAlertModal({ isOpen: true, title: 'Error', message: result.error, type: 'error' });
+      }
+    } catch (error) {
+      setAlertModal({ isOpen: true, title: 'Error', message: 'Failed to update license key', type: 'error' });
     } finally {
       setActionLoading(null);
     }
@@ -287,6 +320,7 @@ export default function UserDetailPage() {
                     setExtendModal={setExtendModal}
                     setDealClosedModal={setDealClosedModal}
                     setDisableModal={setDisableModal}
+                    setEditModal={setEditModal}
                   />
                 ))}
               </div>
@@ -318,6 +352,7 @@ export default function UserDetailPage() {
                     setExtendModal={setExtendModal}
                     setDealClosedModal={setDealClosedModal}
                     setDisableModal={setDisableModal}
+                    setEditModal={setEditModal}
                   />
                 ))}
               </div>
@@ -349,6 +384,7 @@ export default function UserDetailPage() {
                     setExtendModal={setExtendModal}
                     setDealClosedModal={setDealClosedModal}
                     setDisableModal={setDisableModal}
+                    setEditModal={setEditModal}
                   />
                 ))}
               </div>
@@ -400,6 +436,13 @@ export default function UserDetailPage() {
         message={alertModal.message}
         type={alertModal.type}
       />
+
+      <EditKeyModal
+        isOpen={editModal.isOpen}
+        onClose={() => setEditModal({ isOpen: false, key: null })}
+        onSave={handleEditKey}
+        licenseKey={editModal.key}
+      />
     </div>
   );
 }
@@ -419,6 +462,7 @@ interface KeyCardProps {
   setExtendModal: (state: { isOpen: boolean; keyId: string | null }) => void;
   setDealClosedModal: (state: { isOpen: boolean; keyId: string | null }) => void;
   setDisableModal: (state: { isOpen: boolean; keyId: string | null }) => void;
+  setEditModal: (state: { isOpen: boolean; key: LicenseKey | null }) => void;
 }
 
 function KeyCard({
@@ -435,6 +479,7 @@ function KeyCard({
   setExtendModal,
   setDealClosedModal,
   setDisableModal,
+  setEditModal,
 }: KeyCardProps) {
   return (
     <div className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
@@ -501,6 +546,13 @@ function KeyCard({
 
       {/* Actions */}
       <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-200">
+        <button
+          onClick={() => setEditModal({ isOpen: true, key: licenseKey })}
+          disabled={actionLoading === licenseKey.id}
+          className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:bg-gray-400 transition-colors text-sm font-medium"
+        >
+          ✏️ Edit
+        </button>
         {licenseKey.status === 'active' && licenseKey.key_type === 'trial' && (
           <>
             <button
