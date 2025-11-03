@@ -215,7 +215,7 @@ export default function UserDetailPage() {
       emailType: 'dealClosed',
       productionKey: prodKey,
       developmentKey: devKey,
-      activeFlowsLimit: prodKey.activeFlows || devKey.activeFlows,
+      activeFlowsLimit: prodKey.activeFlows ?? devKey.activeFlows ?? undefined,
     });
   };
 
