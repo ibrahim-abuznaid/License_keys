@@ -1,28 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { generateLicenseKey } from '@/lib/key-generator';
-import { sendDealClosedEmail } from '@/lib/email-service';
+import { sendDealClosedEmail, sendCustomEmail } from '@/lib/email-service';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const { active_flows_limit } = await request.json();
-    const trialKeyId = params.id;
-
-    if (!active_flows_limit || active_flows_limit <= 0) {
-      return NextResponse.json(
-        { error: 'Invalid active_flows_limit value' },
-        { status: 400 }
-      );
-    }
+    const body = await request.json();
+    const { activeFlows, sendEmail = true, subject, htmlBody } = body;
+    const trialKeyValue = params.id;
 
     // Get current trial key
     const { data: trialKey, error: fetchError } = await supabaseAdmin
       .from('license_keys')
       .select('*')
-      .eq('id', trialKeyId)
+      .eq('key', trialKeyValue)
       .single();
 
     if (fetchError || !trialKey) {
@@ -32,15 +26,16 @@ export async function POST(
       );
     }
 
-    // Update trial key to development key (remove expiry, add limits)
+    // Convert trial key to development key (subscribed, no expiry)
     const { data: developmentKey, error: devUpdateError } = await supabaseAdmin
       .from('license_keys')
       .update({
-        key_type: 'development',
-        expires_at: null,
-        active_flows_limit,
+        expiresAt: null, // null means no expiry = subscribed
+        isTrial: false,
+        keyType: 'development',
+        activeFlows: activeFlows || trialKey.activeFlows,
       })
-      .eq('id', trialKeyId)
+      .eq('key', trialKeyValue)
       .select()
       .single();
 
@@ -55,13 +50,40 @@ export async function POST(
       .from('license_keys')
       .insert({
         key: productionKeyValue,
-        customer_email: trialKey.customer_email,
-        deployment: trialKey.deployment,
-        features: trialKey.features,
-        key_type: 'production',
-        status: 'active',
-        active_flows_limit,
-        expires_at: null,
+        email: trialKey.email,
+        expiresAt: null, // null means no expiry = subscribed
+        isTrial: false,
+        keyType: 'production',
+        activeFlows: activeFlows || trialKey.activeFlows,
+        // Copy all user info and feature flags from trial key
+        fullName: trialKey.fullName,
+        companyName: trialKey.companyName,
+        numberOfEmployees: trialKey.numberOfEmployees,
+        goal: trialKey.goal,
+        notes: trialKey.notes,
+        ssoEnabled: trialKey.ssoEnabled,
+        gitSyncEnabled: trialKey.gitSyncEnabled,
+        showPoweredBy: trialKey.showPoweredBy,
+        embeddingEnabled: trialKey.embeddingEnabled,
+        auditLogEnabled: trialKey.auditLogEnabled,
+        customAppearanceEnabled: trialKey.customAppearanceEnabled,
+        manageProjectsEnabled: trialKey.manageProjectsEnabled,
+        managePiecesEnabled: trialKey.managePiecesEnabled,
+        manageTemplatesEnabled: trialKey.manageTemplatesEnabled,
+        apiKeysEnabled: trialKey.apiKeysEnabled,
+        customDomainsEnabled: trialKey.customDomainsEnabled,
+        projectRolesEnabled: trialKey.projectRolesEnabled,
+        flowIssuesEnabled: trialKey.flowIssuesEnabled,
+        alertsEnabled: trialKey.alertsEnabled,
+        analyticsEnabled: trialKey.analyticsEnabled,
+        globalConnectionsEnabled: trialKey.globalConnectionsEnabled,
+        customRolesEnabled: trialKey.customRolesEnabled,
+        environmentsEnabled: trialKey.environmentsEnabled,
+        agentsEnabled: trialKey.agentsEnabled,
+        tablesEnabled: trialKey.tablesEnabled,
+        todosEnabled: trialKey.todosEnabled,
+        mcpsEnabled: trialKey.mcpsEnabled,
+        premiumPieces: trialKey.premiumPieces,
       })
       .select()
       .single();
@@ -73,38 +95,57 @@ export async function POST(
     // Log actions to history
     await supabaseAdmin.from('key_history').insert([
       {
-        key_id: trialKeyId,
+        key_value: trialKeyValue,
         action: 'deal_closed',
         details: { 
-          converted_to: 'development', 
-          active_flows_limit,
-          production_key_id: productionKey.id 
+          converted_to: 'development',
+          activeFlows,
+          previous_expiry: trialKey.expiresAt,
+          production_key: productionKeyValue,
         },
       },
       {
-        key_id: productionKey.id,
+        key_value: productionKeyValue,
         action: 'created',
         details: { 
-          type: 'production', 
-          active_flows_limit,
-          related_dev_key_id: trialKeyId 
+          type: 'production',
+          source: 'deal_closed',
+          activeFlows,
+          related_dev_key: trialKeyValue,
         },
       },
     ]);
 
-    // Send welcome email with both keys
-    await sendDealClosedEmail({
-      to: trialKey.customer_email,
-      developmentKey,
-      productionKey,
-      activeFlowsLimit: active_flows_limit,
-    });
+    // Send welcome email with both keys (only if sendEmail is true)
+    if (sendEmail) {
+      try {
+        if (subject && htmlBody) {
+          // Send custom email
+          await sendCustomEmail({
+            to: trialKey.email,
+            subject,
+            htmlBody,
+          });
+        } else {
+          // Send default deal-closed email
+          await sendDealClosedEmail({
+            to: trialKey.email,
+            developmentKey,
+            productionKey,
+            activeFlowsLimit: activeFlows || trialKey.activeFlows || 0,
+          });
+        }
+      } catch (emailError) {
+        console.error('Failed to send deal closed email:', emailError);
+        // Don't fail the request if email fails
+      }
+    }
 
     return NextResponse.json({ 
-      data: { 
-        developmentKey, 
-        productionKey 
-      } 
+      data: {
+        developmentKey,
+        productionKey,
+      }
     });
   } catch (error: any) {
     console.error('Error closing deal:', error);
@@ -114,4 +155,3 @@ export async function POST(
     );
   }
 }
-

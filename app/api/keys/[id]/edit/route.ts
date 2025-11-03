@@ -7,47 +7,65 @@ export async function PUT(
 ) {
   try {
     const body = await request.json();
-    const {
-      customer_email,
-      deployment,
-      key_type,
-      status,
-      features,
-      expires_at,
-      active_flows_limit,
-      notes,
-    } = body;
+    const keyValue = params.id;
 
-    // Validate required fields
-    if (!customer_email || !deployment || !key_type || !status) {
+    // Extract all possible fields from body
+    const updateData: any = {};
+    
+    // Basic fields
+    if (body.email !== undefined) updateData.email = body.email;
+    if (body.keyType !== undefined) updateData.keyType = body.keyType;
+    if (body.isTrial !== undefined) updateData.isTrial = body.isTrial;
+    if (body.expiresAt !== undefined) updateData.expiresAt = body.expiresAt;
+    if (body.activatedAt !== undefined) updateData.activatedAt = body.activatedAt;
+    if (body.activeFlows !== undefined) updateData.activeFlows = body.activeFlows;
+    
+    // User info fields
+    if (body.fullName !== undefined) updateData.fullName = body.fullName;
+    if (body.companyName !== undefined) updateData.companyName = body.companyName;
+    if (body.numberOfEmployees !== undefined) updateData.numberOfEmployees = body.numberOfEmployees;
+    if (body.goal !== undefined) updateData.goal = body.goal;
+    if (body.notes !== undefined) updateData.notes = body.notes;
+    
+    // Feature flags
+    if (body.ssoEnabled !== undefined) updateData.ssoEnabled = body.ssoEnabled;
+    if (body.gitSyncEnabled !== undefined) updateData.gitSyncEnabled = body.gitSyncEnabled;
+    if (body.showPoweredBy !== undefined) updateData.showPoweredBy = body.showPoweredBy;
+    if (body.embeddingEnabled !== undefined) updateData.embeddingEnabled = body.embeddingEnabled;
+    if (body.auditLogEnabled !== undefined) updateData.auditLogEnabled = body.auditLogEnabled;
+    if (body.customAppearanceEnabled !== undefined) updateData.customAppearanceEnabled = body.customAppearanceEnabled;
+    if (body.manageProjectsEnabled !== undefined) updateData.manageProjectsEnabled = body.manageProjectsEnabled;
+    if (body.managePiecesEnabled !== undefined) updateData.managePiecesEnabled = body.managePiecesEnabled;
+    if (body.manageTemplatesEnabled !== undefined) updateData.manageTemplatesEnabled = body.manageTemplatesEnabled;
+    if (body.apiKeysEnabled !== undefined) updateData.apiKeysEnabled = body.apiKeysEnabled;
+    if (body.customDomainsEnabled !== undefined) updateData.customDomainsEnabled = body.customDomainsEnabled;
+    if (body.projectRolesEnabled !== undefined) updateData.projectRolesEnabled = body.projectRolesEnabled;
+    if (body.flowIssuesEnabled !== undefined) updateData.flowIssuesEnabled = body.flowIssuesEnabled;
+    if (body.alertsEnabled !== undefined) updateData.alertsEnabled = body.alertsEnabled;
+    if (body.analyticsEnabled !== undefined) updateData.analyticsEnabled = body.analyticsEnabled;
+    if (body.globalConnectionsEnabled !== undefined) updateData.globalConnectionsEnabled = body.globalConnectionsEnabled;
+    if (body.customRolesEnabled !== undefined) updateData.customRolesEnabled = body.customRolesEnabled;
+    if (body.environmentsEnabled !== undefined) updateData.environmentsEnabled = body.environmentsEnabled;
+    if (body.agentsEnabled !== undefined) updateData.agentsEnabled = body.agentsEnabled;
+    if (body.tablesEnabled !== undefined) updateData.tablesEnabled = body.tablesEnabled;
+    if (body.todosEnabled !== undefined) updateData.todosEnabled = body.todosEnabled;
+    if (body.mcpsEnabled !== undefined) updateData.mcpsEnabled = body.mcpsEnabled;
+    
+    // Premium pieces (array)
+    if (body.premiumPieces !== undefined) updateData.premiumPieces = body.premiumPieces;
+
+    if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'No fields to update' },
         { status: 400 }
       );
     }
 
-    // Convert features array to object if it's an array
-    const featuresObj = Array.isArray(features)
-      ? features.reduce((acc, feature) => {
-          acc[feature] = true;
-          return acc;
-        }, {} as Record<string, boolean>)
-      : features;
-
     // Update the key
     const { data, error } = await supabaseAdmin
       .from('license_keys')
-      .update({
-        customer_email,
-        deployment,
-        key_type,
-        status,
-        features: featuresObj,
-        expires_at: expires_at || null,
-        active_flows_limit: active_flows_limit || null,
-        notes: notes || null,
-      })
-      .eq('id', params.id)
+      .update(updateData)
+      .eq('key', keyValue)
       .select()
       .single();
 
@@ -57,9 +75,9 @@ export async function PUT(
 
     // Log the action
     await supabaseAdmin.from('key_history').insert({
-      key_id: params.id,
+      key_value: keyValue,
       action: 'updated',
-      details: { updated_fields: body },
+      details: { updated_fields: Object.keys(updateData) },
     });
 
     return NextResponse.json(
@@ -80,4 +98,3 @@ export async function PUT(
     );
   }
 }
-

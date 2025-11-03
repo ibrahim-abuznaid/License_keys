@@ -1,46 +1,85 @@
 'use client';
 
-import { useState } from 'react';
-import { 
-  AVAILABLE_FEATURES, 
-  FEATURE_PRESETS, 
-  FeaturePreset, 
-  DeploymentType 
-} from '@/lib/types';
+import { useCallback, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { FEATURE_PRESETS, FeaturePreset, LicenseKey, LicenseKeyFeature, LICENSE_KEY_FEATURES } from '@/lib/types';
+import { EmailDraftModal } from '@/components/EmailDraftModal';
 
 interface KeyGenerationFormProps {
-  onSuccess: () => void;
+  onSuccess?: () => void;
+  redirectToSubscriber?: boolean;
 }
 
-export default function KeyGenerationForm({ onSuccess }: KeyGenerationFormProps) {
+const FEATURE_LABELS: Record<LicenseKeyFeature, string> = {
+  ssoEnabled: 'SSO',
+  gitSyncEnabled: 'Git Sync',
+  showPoweredBy: 'Display "Powered by Activepieces"',
+  embeddingEnabled: 'Embedding',
+  auditLogEnabled: 'Audit Log',
+  customAppearanceEnabled: 'Custom Appearance',
+  manageProjectsEnabled: 'Manage Projects',
+  managePiecesEnabled: 'Manage Pieces',
+  manageTemplatesEnabled: 'Manage Templates',
+  apiKeysEnabled: 'API Keys',
+  customDomainsEnabled: 'Custom Domains',
+  projectRolesEnabled: 'Project Roles',
+  flowIssuesEnabled: 'Flow Issues',
+  alertsEnabled: 'Alerts',
+  analyticsEnabled: 'Analytics',
+  globalConnectionsEnabled: 'Global Connections',
+  customRolesEnabled: 'Custom Roles',
+  environmentsEnabled: 'Environments',
+  agentsEnabled: 'Agents',
+  tablesEnabled: 'Tables',
+  todosEnabled: 'Todos',
+  mcpsEnabled: 'MCPs',
+};
+
+const DEFAULT_PRESET: FeaturePreset = 'business';
+
+const buildFeatureState = (preset: FeaturePreset): Record<LicenseKeyFeature, boolean> => {
+  const defaults = FEATURE_PRESETS[preset] ?? {};
+  return LICENSE_KEY_FEATURES.reduce((acc, key) => {
+    const value = defaults[key as keyof LicenseKey];
+    acc[key] = typeof value === 'boolean' ? value : false;
+    return acc;
+  }, {} as Record<LicenseKeyFeature, boolean>);
+};
+
+export default function KeyGenerationForm({ onSuccess, redirectToSubscriber = false }: KeyGenerationFormProps) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
-    customer_email: '',
-    deployment: 'cloud' as DeploymentType,
+    email: '',
     valid_days: 14,
-    preset: 'business' as FeaturePreset,
+    fullName: '',
+    companyName: '',
+    numberOfEmployees: '',
+    goal: '',
+    notes: '',
+    activeFlows: '',
+    preset: DEFAULT_PRESET,
+    isSubscribed: false, // If true, valid_days is ignored and expiresAt will be null
   });
-  const [selectedFeatures, setSelectedFeatures] = useState<Set<string>>(
-    new Set(FEATURE_PRESETS.business)
-  );
+  const [features, setFeatures] = useState<Record<LicenseKeyFeature, boolean>>(() => buildFeatureState(DEFAULT_PRESET));
   const [sendEmail, setSendEmail] = useState(true);
+  const [emailDraftModal, setEmailDraftModal] = useState<{ isOpen: boolean; key: LicenseKey | null }>({ 
+    isOpen: false, 
+    key: null 
+  });
+  const [redirectEmail, setRedirectEmail] = useState<string | null>(null);
 
-  const handlePresetChange = (preset: FeaturePreset) => {
-    setFormData({ ...formData, preset });
-    setSelectedFeatures(new Set(FEATURE_PRESETS[preset]));
-  };
-
-  const handleFeatureToggle = (featureId: string) => {
-    const newFeatures = new Set(selectedFeatures);
-    if (newFeatures.has(featureId)) {
-      newFeatures.delete(featureId);
-    } else {
-      newFeatures.add(featureId);
-    }
-    setSelectedFeatures(newFeatures);
-    setFormData({ ...formData, preset: 'business' }); // Reset preset when manually changing
-  };
+  const goToSubscriberPage = useCallback(
+    (email?: string) => {
+      if (!redirectToSubscriber) return;
+      const target = email ?? redirectEmail;
+      if (!target) return;
+      setRedirectEmail(null);
+      router.push(`/users/${encodeURIComponent(target)}`);
+    },
+    [redirectEmail, redirectToSubscriber, router],
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,16 +87,24 @@ export default function KeyGenerationForm({ onSuccess }: KeyGenerationFormProps)
     setError('');
 
     try {
+      const payload = {
+        email: formData.email,
+        valid_days: formData.isSubscribed ? null : formData.valid_days,
+        fullName: formData.fullName || undefined,
+        companyName: formData.companyName || undefined,
+        numberOfEmployees: formData.numberOfEmployees || undefined,
+        goal: formData.goal || undefined,
+        notes: formData.notes || undefined,
+        activeFlows: formData.activeFlows ? parseInt(formData.activeFlows) : undefined,
+        preset: formData.preset,
+        ...features,
+      };
+
       // Create license key
       const response = await fetch('/api/keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customer_email: formData.customer_email,
-          deployment: formData.deployment,
-          features: Array.from(selectedFeatures),
-          valid_days: formData.valid_days,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const result = await response.json();
@@ -66,24 +113,33 @@ export default function KeyGenerationForm({ onSuccess }: KeyGenerationFormProps)
         throw new Error(result.error || 'Failed to create license key');
       }
 
-      // Send email if requested
+      const createdKey: LicenseKey = result.data;
+      setRedirectEmail(createdKey.email ?? null);
+
+      // Show email draft modal if requested
       if (sendEmail) {
-        await fetch(`/api/keys/${result.data.id}/send-email`, {
-          method: 'POST',
-        });
+        setEmailDraftModal({ isOpen: true, key: createdKey });
+      } else {
+        goToSubscriberPage(createdKey.email);
       }
 
       // Reset form
       setFormData({
-        customer_email: '',
-        deployment: 'cloud',
+        email: '',
         valid_days: 14,
-        preset: 'business',
+        fullName: '',
+        companyName: '',
+        numberOfEmployees: '',
+        goal: '',
+        notes: '',
+        activeFlows: '',
+        preset: DEFAULT_PRESET,
+        isSubscribed: false,
       });
-      setSelectedFeatures(new Set(FEATURE_PRESETS.business));
+      setFeatures(buildFeatureState(DEFAULT_PRESET));
       setSendEmail(true);
 
-      onSuccess();
+      onSuccess?.();
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -91,8 +147,44 @@ export default function KeyGenerationForm({ onSuccess }: KeyGenerationFormProps)
     }
   };
 
+  const handlePresetSelect = (preset: FeaturePreset) => {
+    setFormData(prev => ({ ...prev, preset }));
+    setFeatures(buildFeatureState(preset));
+  };
+
+  const handleFeatureChange = (feature: LicenseKeyFeature, value: boolean) => {
+    setFeatures(prev => ({ ...prev, [feature]: value }));
+  };
+
+  const handleSendEmail = async (subject: string, body: string) => {
+    const keyValue = emailDraftModal.key?.key;
+    if (!keyValue) return;
+
+    try {
+      const response = await fetch(`/api/keys/${keyValue}/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject, htmlBody: body }),
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to send email');
+      }
+    } catch (err: any) {
+      setError(err.message);
+      throw err; // Re-throw so the modal can handle it
+    }
+  };
+
+  const handleModalClose = () => {
+    setEmailDraftModal({ isOpen: false, key: null });
+    goToSubscriberPage();
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6 mb-6">
+    <>
+      <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6 mb-6">
       <h2 className="text-2xl font-bold text-gray-800 mb-6">Generate License Key</h2>
 
       {error && (
@@ -103,76 +195,156 @@ export default function KeyGenerationForm({ onSuccess }: KeyGenerationFormProps)
 
       {/* Customer Email */}
       <div className="mb-4">
-        <label htmlFor="customer_email" className="block text-sm font-medium text-gray-700 mb-2">
+        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
           Customer Email *
         </label>
         <input
           type="email"
-          id="customer_email"
+          id="email"
           required
-          value={formData.customer_email}
-          onChange={(e) => setFormData({ ...formData, customer_email: e.target.value })}
+          value={formData.email}
+          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           placeholder="customer@example.com"
         />
       </div>
 
-      {/* Deployment Type */}
+      {/* Full Name & Company Name */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
+            Full Name
+          </label>
+          <input
+            type="text"
+            id="fullName"
+            value={formData.fullName}
+            onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            placeholder="John Doe"
+          />
+        </div>
+        <div>
+          <label htmlFor="companyName" className="block text-sm font-medium text-gray-700 mb-2">
+            Company Name
+          </label>
+          <input
+            type="text"
+            id="companyName"
+            value={formData.companyName}
+            onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            placeholder="Acme Inc"
+          />
+        </div>
+      </div>
+
+      {/* Number of Employees & Active Flows */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label htmlFor="numberOfEmployees" className="block text-sm font-medium text-gray-700 mb-2">
+            Number of Employees
+          </label>
+          <select
+            id="numberOfEmployees"
+            value={formData.numberOfEmployees}
+            onChange={(e) => setFormData({ ...formData, numberOfEmployees: e.target.value })}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          >
+            <option value="">Select...</option>
+            <option value="1-10">1-10</option>
+            <option value="11-50">11-50</option>
+            <option value="51-200">51-200</option>
+            <option value="201-500">201-500</option>
+            <option value="501+">501+</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="activeFlows" className="block text-sm font-medium text-gray-700 mb-2">
+            Active Flows Limit
+          </label>
+          <input
+            type="number"
+            id="activeFlows"
+            value={formData.activeFlows}
+            onChange={(e) => setFormData({ ...formData, activeFlows: e.target.value })}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            placeholder="1000"
+          />
+        </div>
+      </div>
+
+      {/* Goal */}
+      <div className="mb-4">
+        <label htmlFor="goal" className="block text-sm font-medium text-gray-700 mb-2">
+          Customer Goal
+        </label>
+        <input
+          type="text"
+          id="goal"
+          value={formData.goal}
+          onChange={(e) => setFormData({ ...formData, goal: e.target.value })}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          placeholder="e.g., Automate customer onboarding"
+        />
+      </div>
+
+      {/* Key Type: Trial or Subscribed */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Deployment Type *
+          Key Type *
         </label>
         <div className="flex gap-4">
           <label className="flex items-center">
             <input
               type="radio"
-              value="cloud"
-              checked={formData.deployment === 'cloud'}
-              onChange={(e) => setFormData({ ...formData, deployment: e.target.value as DeploymentType })}
+              checked={!formData.isSubscribed}
+              onChange={() => setFormData({ ...formData, isSubscribed: false })}
               className="mr-2"
             />
-            Cloud
+            Trial (with expiry)
           </label>
           <label className="flex items-center">
             <input
               type="radio"
-              value="self-hosted"
-              checked={formData.deployment === 'self-hosted'}
-              onChange={(e) => setFormData({ ...formData, deployment: e.target.value as DeploymentType })}
+              checked={formData.isSubscribed}
+              onChange={() => setFormData({ ...formData, isSubscribed: true })}
               className="mr-2"
             />
-            Self-Hosted
+            Subscribed (no expiry)
           </label>
         </div>
       </div>
 
-      {/* Valid Days */}
-      <div className="mb-4">
-        <label htmlFor="valid_days" className="block text-sm font-medium text-gray-700 mb-2">
-          Valid for (days) *
-        </label>
-        <input
-          type="number"
-          id="valid_days"
-          min="1"
-          required
-          value={formData.valid_days}
-          onChange={(e) => setFormData({ ...formData, valid_days: parseInt(e.target.value) })}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-        />
-      </div>
+      {/* Valid Days (only shown for trial keys) */}
+      {!formData.isSubscribed && (
+        <div className="mb-4">
+          <label htmlFor="valid_days" className="block text-sm font-medium text-gray-700 mb-2">
+            Valid for (days) *
+          </label>
+          <input
+            type="number"
+            id="valid_days"
+            min="1"
+            required
+            value={formData.valid_days}
+            onChange={(e) => setFormData({ ...formData, valid_days: parseInt(e.target.value) })}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          />
+        </div>
+      )}
 
       {/* Feature Presets */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Feature Preset
+          Feature Preset *
         </label>
         <div className="flex flex-wrap gap-2">
-          {(['none', 'all', 'business', 'embed'] as FeaturePreset[]).map((preset) => (
+          {(['minimal', 'business', 'enterprise', 'all'] as FeaturePreset[]).map((preset) => (
             <button
               key={preset}
               type="button"
-              onClick={() => handlePresetChange(preset)}
+              onClick={() => handlePresetSelect(preset)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 formData.preset === preset
                   ? 'bg-indigo-600 text-white'
@@ -182,32 +354,51 @@ export default function KeyGenerationForm({ onSuccess }: KeyGenerationFormProps)
               {preset.charAt(0).toUpperCase() + preset.slice(1)}
             </button>
           ))}
-        </div>
       </div>
+        <p className="mt-2 text-xs text-gray-500">
+          Presets configure the abilities below; adjust anything that needs to be customized before generating the key.
+        </p>
+    </div>
 
-      {/* Feature Checkboxes */}
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Features
+      {/* Key Abilities */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-3">
+          Key Abilities
         </label>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {AVAILABLE_FEATURES.map((feature) => (
-            <label key={feature.id} className="flex items-start">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {LICENSE_KEY_FEATURES.map((feature) => (
+            <label
+              key={feature}
+              className="flex items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700"
+            >
               <input
                 type="checkbox"
-                checked={selectedFeatures.has(feature.id)}
-                onChange={() => handleFeatureToggle(feature.id)}
-                className="mt-1 mr-2"
+                checked={features[feature]}
+                onChange={(e) => handleFeatureChange(feature, e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
               />
-              <div>
-                <div className="font-medium text-gray-900">{feature.name}</div>
-                {feature.description && (
-                  <div className="text-sm text-gray-500">{feature.description}</div>
-                )}
-              </div>
+              <span className="leading-5">{FEATURE_LABELS[feature]}</span>
             </label>
           ))}
         </div>
+        <p className="mt-2 text-xs text-gray-500">
+          Toggle individual abilities to customize the key beyond the selected preset.
+        </p>
+      </div>
+
+      {/* Notes */}
+      <div className="mb-4">
+        <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
+          Notes
+        </label>
+        <textarea
+          id="notes"
+          value={formData.notes}
+          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+          rows={3}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          placeholder="Internal notes about this key..."
+        />
       </div>
 
       {/* Send Email Option */}
@@ -220,7 +411,7 @@ export default function KeyGenerationForm({ onSuccess }: KeyGenerationFormProps)
             className="mr-2"
           />
           <span className="text-sm font-medium text-gray-700">
-            Send trial key email to customer
+            Send key email to customer
           </span>
         </label>
       </div>
@@ -233,7 +424,15 @@ export default function KeyGenerationForm({ onSuccess }: KeyGenerationFormProps)
       >
         {loading ? 'Generating...' : 'Generate License Key'}
       </button>
-    </form>
+      </form>
+
+      <EmailDraftModal
+        isOpen={emailDraftModal.isOpen}
+        onClose={handleModalClose}
+        onSend={handleSendEmail}
+        licenseKey={emailDraftModal.key}
+        emailType="trial"
+      />
+    </>
   );
 }
-

@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { LicenseKey } from '@/lib/types';
+import { LicenseKey, getKeyStatus } from '@/lib/types';
 import { format } from 'date-fns';
 import { InputModal, ConfirmModal, AlertModal } from '@/components/Modal';
 import { EditKeyModal } from '@/components/EditKeyModal';
+import { EmailDraftModal } from '@/components/EmailDraftModal';
 
 export default function KeyManagementTable() {
   const router = useRouter();
@@ -15,10 +16,18 @@ export default function KeyManagementTable() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   
   // Modal states
-  const [extendModal, setExtendModal] = useState<{ isOpen: boolean; keyId: string | null }>({ isOpen: false, keyId: null });
-  const [dealClosedModal, setDealClosedModal] = useState<{ isOpen: boolean; keyId: string | null }>({ isOpen: false, keyId: null });
-  const [disableModal, setDisableModal] = useState<{ isOpen: boolean; keyId: string | null }>({ isOpen: false, keyId: null });
+  const [extendModal, setExtendModal] = useState<{ isOpen: boolean; keyValue: string | null }>({ isOpen: false, keyValue: null });
+  const [dealClosedModal, setDealClosedModal] = useState<{ isOpen: boolean; keyValue: string | null }>({ isOpen: false, keyValue: null });
+  const [disableModal, setDisableModal] = useState<{ isOpen: boolean; keyValue: string | null }>({ isOpen: false, keyValue: null });
   const [editModal, setEditModal] = useState<{ isOpen: boolean; key: LicenseKey | null }>({ isOpen: false, key: null });
+  const [emailDraftModal, setEmailDraftModal] = useState<{ 
+    isOpen: boolean; 
+    key: LicenseKey | null;
+    emailType: 'trial' | 'dealClosed';
+    productionKey?: LicenseKey;
+    developmentKey?: LicenseKey;
+    activeFlowsLimit?: number;
+  }>({ isOpen: false, key: null, emailType: 'trial' });
   const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; type: 'success' | 'error' | 'info' }>({ 
     isOpen: false, title: '', message: '', type: 'info' 
   });
@@ -57,12 +66,12 @@ export default function KeyManagementTable() {
   };
 
   const handleExtendKey = async (days: string) => {
-    const keyId = extendModal.keyId;
-    if (!keyId) return;
+    const keyValue = extendModal.keyValue;
+    if (!keyValue) return;
 
-    setActionLoading(keyId);
+    setActionLoading(keyValue);
     try {
-      const response = await fetch(`/api/keys/${keyId}/extend`, {
+      const response = await fetch(`/api/keys/${keyValue}/extend`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ additional_days: parseInt(days) }),
@@ -83,24 +92,30 @@ export default function KeyManagementTable() {
   };
 
   const handleDealClosed = async (limit: string) => {
-    const keyId = dealClosedModal.keyId;
-    if (!keyId) return;
+    const keyValue = dealClosedModal.keyValue;
+    if (!keyValue) return;
 
-    setActionLoading(keyId);
+    setActionLoading(keyValue);
     try {
-      const response = await fetch(`/api/keys/${keyId}/deal-closed`, {
+      // First, close the deal without sending email
+      const response = await fetch(`/api/keys/${keyValue}/deal-closed`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ active_flows_limit: parseInt(limit) }),
+        body: JSON.stringify({ activeFlows: parseInt(limit), sendEmail: false }),
       });
 
       if (response.ok) {
+        const result = await response.json();
         await fetchKeys();
-        setAlertModal({ 
+        
+        // Show email draft modal with both keys
+        setEmailDraftModal({ 
           isOpen: true, 
-          title: 'Success', 
-          message: 'Deal closed successfully! Welcome email sent to customer with development and production keys.', 
-          type: 'success' 
+          key: result.data.productionKey,
+          emailType: 'dealClosed',
+          productionKey: result.data.productionKey,
+          developmentKey: result.data.developmentKey,
+          activeFlowsLimit: parseInt(limit),
         });
       } else {
         const result = await response.json();
@@ -114,12 +129,12 @@ export default function KeyManagementTable() {
   };
 
   const handleDisableKey = async () => {
-    const keyId = disableModal.keyId;
-    if (!keyId) return;
+    const keyValue = disableModal.keyValue;
+    if (!keyValue) return;
 
-    setActionLoading(keyId);
+    setActionLoading(keyValue);
     try {
-      const response = await fetch(`/api/keys/${keyId}/disable`, {
+      const response = await fetch(`/api/keys/${keyValue}/disable`, {
         method: 'POST',
       });
 
@@ -137,15 +152,58 @@ export default function KeyManagementTable() {
     }
   };
 
-  const handleSendEmail = async (keyId: string) => {
-    setActionLoading(keyId);
+  const handleReactivateKey = async (keyValue: string) => {
+    setActionLoading(keyValue);
     try {
-      const response = await fetch(`/api/keys/${keyId}/send-email`, {
+      const response = await fetch(`/api/keys/${keyValue}/reactivate`, {
         method: 'POST',
       });
 
       if (response.ok) {
-        setAlertModal({ isOpen: true, title: 'Success', message: 'Email sent successfully!', type: 'success' });
+        await fetchKeys();
+        setAlertModal({ isOpen: true, title: 'Success', message: 'Key reactivated successfully!', type: 'success' });
+      } else {
+        const result = await response.json();
+        setAlertModal({ isOpen: true, title: 'Error', message: result.error, type: 'error' });
+      }
+    } catch (error) {
+      setAlertModal({ isOpen: true, title: 'Error', message: 'Failed to reactivate key', type: 'error' });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleSendEmail = async (subject: string, body: string) => {
+    const keyValue = emailDraftModal.key?.key;
+    if (!keyValue) return;
+
+    setActionLoading(keyValue);
+    try {
+      let response;
+      
+      if (emailDraftModal.emailType === 'dealClosed' && emailDraftModal.developmentKey) {
+        // For deal-closed emails, we don't need to call another endpoint
+        // The email was already sent or we need to send it via custom email
+        // We'll use the send-email endpoint for the production key
+        response = await fetch(`/api/keys/${keyValue}/send-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subject, htmlBody: body }),
+        });
+      } else {
+        // For regular trial emails
+        response = await fetch(`/api/keys/${keyValue}/send-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subject, htmlBody: body }),
+        });
+      }
+
+      if (response.ok) {
+        const message = emailDraftModal.emailType === 'dealClosed' 
+          ? 'Deal closed successfully! Email sent with both Development and Production keys.' 
+          : 'Email sent successfully!';
+        setAlertModal({ isOpen: true, title: 'Success', message, type: 'success' });
       } else {
         const result = await response.json();
         setAlertModal({ isOpen: true, title: 'Error', message: result.error, type: 'error' });
@@ -158,12 +216,12 @@ export default function KeyManagementTable() {
   };
 
   const handleEditKey = async (updatedData: Partial<LicenseKey>) => {
-    const keyId = editModal.key?.id;
-    if (!keyId) return;
+    const keyValue = editModal.key?.key;
+    if (!keyValue) return;
 
-    setActionLoading(keyId);
+    setActionLoading(keyValue);
     try {
-      const response = await fetch(`/api/keys/${keyId}/edit`, {
+      const response = await fetch(`/api/keys/${keyValue}/edit`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedData),
@@ -188,14 +246,15 @@ export default function KeyManagementTable() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (key: LicenseKey) => {
+    const status = getKeyStatus(key);
     const colors = {
       active: 'bg-green-100 text-green-800',
       disabled: 'bg-red-100 text-red-800',
       expired: 'bg-yellow-100 text-yellow-800',
     };
     return (
-      <span className={`px-2 py-1 text-xs font-medium rounded-full ${colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800'}`}>
+      <span className={`px-2 py-1 text-xs font-medium rounded-full ${colors[status]}`}>
         {status.toUpperCase()}
       </span>
     );
@@ -215,15 +274,8 @@ export default function KeyManagementTable() {
   };
 
   const formatDate = (dateString: string | null) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return 'Never (Subscribed)';
     return format(new Date(dateString), 'MMM dd, yyyy');
-  };
-
-  const getEnabledFeatures = (features: Record<string, boolean>) => {
-    return Object.entries(features)
-      .filter(([_, enabled]) => enabled)
-      .map(([feature]) => feature.replace(/_/g, ' '))
-      .join(', ') || 'None';
   };
 
   if (loading && keys.length === 0) {
@@ -296,7 +348,7 @@ export default function KeyManagementTable() {
                 Status
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Deployment
+                Company
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Created
@@ -318,13 +370,13 @@ export default function KeyManagementTable() {
               </tr>
             ) : (
               keys.map((key) => (
-                <tr key={key.id} className="hover:bg-gray-50">
+                <tr key={key.key} className="hover:bg-gray-50">
                   <td className="px-4 py-4 text-sm">
                     <button
-                      onClick={() => router.push(`/users/${encodeURIComponent(key.customer_email)}`)}
+                      onClick={() => router.push(`/users/${encodeURIComponent(key.email)}`)}
                       className="text-indigo-600 hover:text-indigo-800 hover:underline font-medium"
                     >
-                      {key.customer_email}
+                      {key.email}
                     </button>
                   </td>
                   <td className="px-4 py-4 text-sm">
@@ -333,43 +385,43 @@ export default function KeyManagementTable() {
                     </code>
                   </td>
                   <td className="px-4 py-4 text-sm">
-                    {getKeyTypeBadge(key.key_type)}
+                    {getKeyTypeBadge(key.keyType)}
                   </td>
                   <td className="px-4 py-4 text-sm">
-                    {getStatusBadge(key.status)}
+                    {getStatusBadge(key)}
                   </td>
                   <td className="px-4 py-4 text-sm text-gray-900">
-                    {key.deployment}
+                    {key.companyName || 'N/A'}
                   </td>
                   <td className="px-4 py-4 text-sm text-gray-900">
-                    {formatDate(key.created_at)}
+                    {format(new Date(key.createdAt), 'MMM dd, yyyy')}
                   </td>
                   <td className="px-4 py-4 text-sm text-gray-900">
-                    {formatDate(key.expires_at)}
+                    {formatDate(key.expiresAt)}
                   </td>
                   <td className="px-4 py-4 text-sm">
                     <div className="flex gap-2 flex-wrap">
                       <button
                         onClick={() => setEditModal({ isOpen: true, key })}
-                        disabled={actionLoading === key.id}
+                        disabled={actionLoading === key.key}
                         className="text-gray-600 hover:text-gray-800 disabled:text-gray-400"
                         title="Edit Key"
                       >
                         ✏️
                       </button>
-                      {key.status === 'active' && key.key_type === 'trial' && (
+                      {getKeyStatus(key) === 'active' && key.isTrial && (
                         <>
                           <button
-                            onClick={() => setExtendModal({ isOpen: true, keyId: key.id })}
-                            disabled={actionLoading === key.id}
+                            onClick={() => setExtendModal({ isOpen: true, keyValue: key.key })}
+                            disabled={actionLoading === key.key}
                             className="text-blue-600 hover:text-blue-800 disabled:text-gray-400"
                             title="Extend Key"
                           >
                             +Days
                           </button>
                           <button
-                            onClick={() => setDealClosedModal({ isOpen: true, keyId: key.id })}
-                            disabled={actionLoading === key.id}
+                            onClick={() => setDealClosedModal({ isOpen: true, keyValue: key.key })}
+                            disabled={actionLoading === key.key}
                             className="text-green-600 hover:text-green-800 disabled:text-gray-400"
                             title="Deal Closed"
                           >
@@ -377,20 +429,29 @@ export default function KeyManagementTable() {
                           </button>
                         </>
                       )}
-                      {key.status === 'active' && (
+                      {getKeyStatus(key) === 'active' && (
                         <button
-                          onClick={() => handleSendEmail(key.id)}
-                          disabled={actionLoading === key.id}
+                          onClick={() => setEmailDraftModal({ isOpen: true, key, emailType: 'trial' })}
+                          disabled={actionLoading === key.key}
                           className="text-indigo-600 hover:text-indigo-800 disabled:text-gray-400"
                           title="Send Email"
                         >
                           Email
                         </button>
                       )}
-                      {key.status !== 'disabled' && (
+                      {getKeyStatus(key) === 'disabled' ? (
                         <button
-                          onClick={() => setDisableModal({ isOpen: true, keyId: key.id })}
-                          disabled={actionLoading === key.id}
+                          onClick={() => handleReactivateKey(key.key)}
+                          disabled={actionLoading === key.key}
+                          className="text-green-600 hover:text-green-800 disabled:text-gray-400"
+                          title="Reactivate Key"
+                        >
+                          Reactivate
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setDisableModal({ isOpen: true, keyValue: key.key })}
+                          disabled={actionLoading === key.key}
                           className="text-red-600 hover:text-red-800 disabled:text-gray-400"
                           title="Disable Key"
                         >
@@ -416,7 +477,7 @@ export default function KeyManagementTable() {
       {/* Modals */}
       <InputModal
         isOpen={extendModal.isOpen}
-        onClose={() => setExtendModal({ isOpen: false, keyId: null })}
+        onClose={() => setExtendModal({ isOpen: false, keyValue: null })}
         onSubmit={handleExtendKey}
         title="Extend Trial Key"
         message="Enter the number of days to extend this trial key:"
@@ -428,7 +489,7 @@ export default function KeyManagementTable() {
 
       <InputModal
         isOpen={dealClosedModal.isOpen}
-        onClose={() => setDealClosedModal({ isOpen: false, keyId: null })}
+        onClose={() => setDealClosedModal({ isOpen: false, keyValue: null })}
         onSubmit={handleDealClosed}
         title="Deal Closed"
         message="Enter the Active Flows Limit for this customer:"
@@ -440,10 +501,10 @@ export default function KeyManagementTable() {
 
       <ConfirmModal
         isOpen={disableModal.isOpen}
-        onClose={() => setDisableModal({ isOpen: false, keyId: null })}
+        onClose={() => setDisableModal({ isOpen: false, keyValue: null })}
         onConfirm={handleDisableKey}
         title="Disable Key"
-        message="Are you sure you want to disable this license key? This action can be reversed later."
+        message="Are you sure you want to disable this license key? This action can be reversed later by extending it."
         confirmText="Disable"
         cancelText="Cancel"
         confirmColor="red"
@@ -463,7 +524,17 @@ export default function KeyManagementTable() {
         onSave={handleEditKey}
         licenseKey={editModal.key}
       />
+
+      <EmailDraftModal
+        isOpen={emailDraftModal.isOpen}
+        onClose={() => setEmailDraftModal({ isOpen: false, key: null, emailType: 'trial' })}
+        onSend={handleSendEmail}
+        licenseKey={emailDraftModal.key}
+        emailType={emailDraftModal.emailType}
+        productionKey={emailDraftModal.productionKey}
+        developmentKey={emailDraftModal.developmentKey}
+        activeFlowsLimit={emailDraftModal.activeFlowsLimit}
+      />
     </div>
   );
 }
-

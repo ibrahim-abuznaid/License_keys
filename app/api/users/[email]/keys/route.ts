@@ -16,8 +16,8 @@ export async function GET(
     const { data: keys, error } = await supabase
       .from('license_keys')
       .select('*')
-      .eq('customer_email', email)
-      .order('created_at', { ascending: false });
+      .eq('email', email)
+      .order('createdAt', { ascending: false });
 
     if (error) {
       return NextResponse.json(
@@ -48,4 +48,3 @@ export async function GET(
     );
   }
 }
-

@@ -6,15 +6,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { additional_days } = await request.json();
     const keyValue = params.id;
-
-    if (!additional_days || additional_days <= 0) {
-      return NextResponse.json(
-        { error: 'Invalid additional_days value' },
-        { status: 400 }
-      );
-    }
 
     // Get current key
     const { data: currentKey, error: fetchError } = await supabaseAdmin
@@ -30,24 +22,24 @@ export async function POST(
       );
     }
 
-    // Calculate new expiry date
-    const currentExpiry = currentKey.expiresAt 
-      ? new Date(currentKey.expiresAt)
-      : new Date();
+    // Determine new expiresAt based on key type
+    let newExpiresAt: string | null;
     
-    // If current expiry is in the past, start from today
-    const now = new Date();
-    if (currentExpiry < now) {
-      currentExpiry.setTime(now.getTime());
+    if (currentKey.isTrial) {
+      // For trial keys, extend by 7 days from today
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + 7);
+      newExpiresAt = expiryDate.toISOString();
+    } else {
+      // For subscribed keys (development/production), set to null (no expiry)
+      newExpiresAt = null;
     }
-    
-    currentExpiry.setDate(currentExpiry.getDate() + additional_days);
 
-    // Update key
+    // Update key to reactivate
     const { data, error } = await supabaseAdmin
       .from('license_keys')
       .update({ 
-        expiresAt: currentExpiry.toISOString(),
+        expiresAt: newExpiresAt,
       })
       .eq('key', keyValue)
       .select()
@@ -60,16 +52,21 @@ export async function POST(
     // Log action to history
     await supabaseAdmin.from('key_history').insert({
       key_value: keyValue,
-      action: 'extended',
-      details: { additional_days, new_expiry: currentExpiry.toISOString() },
+      action: 'reactivated',
+      details: { 
+        new_expiry: newExpiresAt,
+        key_type: currentKey.keyType,
+        was_trial: currentKey.isTrial,
+      },
     });
 
     return NextResponse.json({ data });
   } catch (error: any) {
-    console.error('Error extending license key:', error);
+    console.error('Error reactivating license key:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to extend license key' },
+      { error: error.message || 'Failed to reactivate license key' },
       { status: 500 }
     );
   }
 }
+

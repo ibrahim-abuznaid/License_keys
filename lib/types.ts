@@ -1,74 +1,221 @@
-export type DeploymentType = 'cloud' | 'self-hosted';
-export type KeyStatus = 'active' | 'disabled' | 'expired';
 export type KeyType = 'trial' | 'development' | 'production';
 
-export interface Feature {
-  id: string;
-  name: string;
-  description?: string;
+export interface LicenseKey {
+  key: string;
+  email: string;
+  createdAt: string;
+  expiresAt: string | null;
+  activatedAt: string | null;
+  ssoEnabled: boolean;
+  gitSyncEnabled: boolean;
+  showPoweredBy: boolean;
+  embeddingEnabled: boolean;
+  auditLogEnabled: boolean;
+  customAppearanceEnabled: boolean;
+  manageProjectsEnabled: boolean;
+  managePiecesEnabled: boolean;
+  manageTemplatesEnabled: boolean;
+  apiKeysEnabled: boolean;
+  customDomainsEnabled: boolean;
+  projectRolesEnabled: boolean;
+  flowIssuesEnabled: boolean;
+  alertsEnabled: boolean;
+  premiumPieces: string[];
+  companyName: string | null;
+  goal: string | null;
+  analyticsEnabled: boolean;
+  globalConnectionsEnabled: boolean;
+  customRolesEnabled: boolean;
+  environmentsEnabled: boolean;
+  notes: string | null;
+  keyType: KeyType;
+  isTrial: boolean | null;
+  fullName: string | null;
+  numberOfEmployees: string | null;
+  agentsEnabled: boolean;
+  tablesEnabled: boolean;
+  todosEnabled: boolean;
+  mcpsEnabled: boolean;
+  activeFlows: number | null;
 }
 
-export const AVAILABLE_FEATURES: Feature[] = [
-  { id: 'templates', name: 'Templates', description: 'Access to template library' },
-  { id: 'pieces_management', name: 'Pieces Management', description: 'Custom pieces management' },
-  { id: 'sso', name: 'SSO', description: 'Single Sign-On integration' },
-  { id: 'audit_logs', name: 'Audit Logs', description: 'Detailed audit logging' },
-  { id: 'advanced_analytics', name: 'Advanced Analytics', description: 'Advanced analytics and reporting' },
-  { id: 'priority_support', name: 'Priority Support', description: 'Priority customer support' },
-  { id: 'custom_branding', name: 'Custom Branding', description: 'White-label branding' },
-  { id: 'embed_sdk', name: 'Embed SDK', description: 'Embed SDK for integration' },
-  { id: 'api_access', name: 'API Access', description: 'Full API access' },
-  { id: 'webhooks', name: 'Webhooks', description: 'Webhook support' },
-];
+export const LICENSE_KEY_FEATURES = [
+  'ssoEnabled',
+  'gitSyncEnabled',
+  'showPoweredBy',
+  'embeddingEnabled',
+  'auditLogEnabled',
+  'customAppearanceEnabled',
+  'manageProjectsEnabled',
+  'managePiecesEnabled',
+  'manageTemplatesEnabled',
+  'apiKeysEnabled',
+  'customDomainsEnabled',
+  'projectRolesEnabled',
+  'flowIssuesEnabled',
+  'alertsEnabled',
+  'analyticsEnabled',
+  'globalConnectionsEnabled',
+  'customRolesEnabled',
+  'environmentsEnabled',
+  'agentsEnabled',
+  'tablesEnabled',
+  'todosEnabled',
+  'mcpsEnabled',
+] as const;
 
-export type FeaturePreset = 'none' | 'all' | 'business' | 'embed';
+export type LicenseKeyFeature = typeof LICENSE_KEY_FEATURES[number];
 
-export const FEATURE_PRESETS: Record<FeaturePreset, string[]> = {
-  none: [],
-  all: AVAILABLE_FEATURES.map(f => f.id),
-  business: AVAILABLE_FEATURES.filter(f => f.id !== 'embed_sdk').map(f => f.id),
-  embed: ['embed_sdk', 'templates', 'pieces_management'],
+// Helper type for key status (computed from expiresAt)
+export type KeyStatus = 'active' | 'disabled' | 'expired';
+
+// Helper function to compute key status
+export function getKeyStatus(key: LicenseKey): KeyStatus {
+  if (!key.expiresAt) {
+    return 'active'; // null means subscribed (no expiry)
+  }
+  const expiresAt = new Date(key.expiresAt);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const expireDate = new Date(expiresAt.getFullYear(), expiresAt.getMonth(), expiresAt.getDate());
+  
+  if (expireDate.getTime() < today.getTime()) {
+    return 'expired';
+  } else if (expireDate.getTime() === today.getTime()) {
+    return 'disabled';
+  }
+  return 'active';
+}
+
+// Feature presets for convenience
+export type FeaturePreset = 'minimal' | 'business' | 'enterprise' | 'all';
+
+export const FEATURE_PRESETS: Record<FeaturePreset, Partial<LicenseKey>> = {
+  minimal: {
+    ssoEnabled: false,
+    gitSyncEnabled: true,
+    showPoweredBy: true,
+    embeddingEnabled: false,
+    auditLogEnabled: false,
+    customAppearanceEnabled: false,
+    manageProjectsEnabled: true,
+    managePiecesEnabled: true,
+    manageTemplatesEnabled: true,
+    apiKeysEnabled: true,
+    customDomainsEnabled: false,
+    projectRolesEnabled: false,
+    flowIssuesEnabled: true,
+    alertsEnabled: true,
+    analyticsEnabled: true,
+    globalConnectionsEnabled: false,
+    customRolesEnabled: false,
+    environmentsEnabled: false,
+    agentsEnabled: false,
+    tablesEnabled: false,
+    todosEnabled: true,
+    mcpsEnabled: false,
+  },
+  business: {
+    ssoEnabled: true,
+    gitSyncEnabled: true,
+    showPoweredBy: true,
+    embeddingEnabled: false,
+    auditLogEnabled: true,
+    customAppearanceEnabled: true,
+    manageProjectsEnabled: true,
+    managePiecesEnabled: true,
+    manageTemplatesEnabled: true,
+    apiKeysEnabled: true,
+    customDomainsEnabled: true,
+    projectRolesEnabled: true,
+    flowIssuesEnabled: true,
+    alertsEnabled: true,
+    analyticsEnabled: true,
+    globalConnectionsEnabled: true,
+    customRolesEnabled: false,
+    environmentsEnabled: false,
+    agentsEnabled: false,
+    tablesEnabled: true,
+    todosEnabled: true,
+    mcpsEnabled: false,
+  },
+  enterprise: {
+    ssoEnabled: true,
+    gitSyncEnabled: true,
+    showPoweredBy: false,
+    embeddingEnabled: true,
+    auditLogEnabled: true,
+    customAppearanceEnabled: true,
+    manageProjectsEnabled: true,
+    managePiecesEnabled: true,
+    manageTemplatesEnabled: true,
+    apiKeysEnabled: true,
+    customDomainsEnabled: true,
+    projectRolesEnabled: true,
+    flowIssuesEnabled: true,
+    alertsEnabled: true,
+    analyticsEnabled: true,
+    globalConnectionsEnabled: true,
+    customRolesEnabled: true,
+    environmentsEnabled: true,
+    agentsEnabled: true,
+    tablesEnabled: true,
+    todosEnabled: true,
+    mcpsEnabled: true,
+  },
+  all: {
+    ssoEnabled: true,
+    gitSyncEnabled: true,
+    showPoweredBy: false,
+    embeddingEnabled: true,
+    auditLogEnabled: true,
+    customAppearanceEnabled: true,
+    manageProjectsEnabled: true,
+    managePiecesEnabled: true,
+    manageTemplatesEnabled: true,
+    apiKeysEnabled: true,
+    customDomainsEnabled: true,
+    projectRolesEnabled: true,
+    flowIssuesEnabled: true,
+    alertsEnabled: true,
+    analyticsEnabled: true,
+    globalConnectionsEnabled: true,
+    customRolesEnabled: true,
+    environmentsEnabled: true,
+    agentsEnabled: true,
+    tablesEnabled: true,
+    todosEnabled: true,
+    mcpsEnabled: true,
+  },
 };
 
-export interface LicenseKey {
-  id: string;
-  key: string;
-  customer_email: string;
-  deployment: DeploymentType;
-  key_type: KeyType;
-  status: KeyStatus;
-  features: Record<string, boolean>;
-  created_at: string;
-  activated_at: string | null;
-  expires_at: string | null;
-  active_flows_limit: number | null;
-  notes: string | null;
-  created_by: string | null;
-}
-
-export interface CreateLicenseKeyInput {
-  customer_email: string;
-  deployment: DeploymentType;
-  features: string[];
-  valid_days: number;
+export interface CreateLicenseKeyInput extends Partial<Record<LicenseKeyFeature, boolean>> {
+  email: string;
+  valid_days: number | null; // null for subscribed users
+  fullName?: string;
+  companyName?: string;
+  numberOfEmployees?: string;
+  goal?: string;
+  notes?: string;
+  preset?: FeaturePreset;
+  activeFlows?: number | null;
 }
 
 export interface ExtendKeyInput {
-  key_id: string;
+  key: string;
   additional_days: number;
 }
 
 export interface DealClosedInput {
-  key_id: string;
-  active_flows_limit: number;
+  key: string;
+  activeFlows?: number;
 }
 
 export interface KeyHistory {
   id: string;
-  key_id: string;
+  key_value: string;
   action: string;
   performed_by: string | null;
   performed_at: string;
   details: Record<string, any> | null;
 }
-

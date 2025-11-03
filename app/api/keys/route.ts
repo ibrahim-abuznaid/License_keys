@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { generateLicenseKey } from '@/lib/key-generator';
-import { CreateLicenseKeyInput } from '@/lib/types';
+import { CreateLicenseKeyInput, FEATURE_PRESETS, LICENSE_KEY_FEATURES, LicenseKeyFeature } from '@/lib/types';
 import { sendTrialKeyEmail } from '@/lib/email-service';
 
 // Disable caching for this route
@@ -17,10 +17,10 @@ export async function GET(request: NextRequest) {
     let query = supabaseAdmin
       .from('license_keys')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('createdAt', { ascending: false });
 
     if (search) {
-      query = query.ilike('customer_email', `%${search}%`);
+      query = query.ilike('email', `%${search}%`);
     }
 
     const { data, error } = await query;
@@ -52,12 +52,22 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body: CreateLicenseKeyInput = await request.json();
-    const { customer_email, deployment, features, valid_days } = body;
+    const { 
+      email, 
+      valid_days, 
+      fullName, 
+      companyName, 
+      numberOfEmployees, 
+      goal, 
+      notes, 
+      preset = 'business',
+      activeFlows 
+    } = body;
 
     // Validate input
-    if (!customer_email || !deployment || !features || valid_days === undefined) {
+    if (!email) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Email is required' },
         { status: 400 }
       );
     }
@@ -65,27 +75,51 @@ export async function POST(request: NextRequest) {
     // Generate license key
     const licenseKey = generateLicenseKey();
 
-    // Calculate expiry date
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + valid_days);
+    // Calculate expiry date (null if subscribed, otherwise set expiry)
+    let expiresAt: string | null = null;
+    let isTrial = false;
+    let keyType: 'trial' | 'development' | 'production' = 'production';
 
-    // Convert features array to object
-    const featuresObj = features.reduce((acc, feature) => {
-      acc[feature] = true;
-      return acc;
-    }, {} as Record<string, boolean>);
+    if (valid_days !== null && valid_days !== undefined) {
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + valid_days);
+      expiresAt = expiryDate.toISOString();
+      isTrial = true;
+      keyType = 'trial';
+    }
+
+    // Get feature preset and merge any overrides from the request
+    const baseFeatureSettings = FEATURE_PRESETS[preset] || FEATURE_PRESETS.business;
+    const featureOverrides: Partial<Record<LicenseKeyFeature, boolean>> = {};
+
+    for (const featureKey of LICENSE_KEY_FEATURES) {
+      const overrideValue = body[featureKey];
+      if (typeof overrideValue === 'boolean') {
+        featureOverrides[featureKey] = overrideValue;
+      }
+    }
+
+    const featureSettings = {
+      ...baseFeatureSettings,
+      ...featureOverrides,
+    };
 
     // Insert into database
     const { data, error } = await supabaseAdmin
       .from('license_keys')
       .insert({
         key: licenseKey,
-        customer_email,
-        deployment,
-        features: featuresObj,
-        expires_at: expiresAt.toISOString(),
-        key_type: 'trial',
-        status: 'active',
+        email,
+        expiresAt,
+        isTrial,
+        keyType,
+        fullName,
+        companyName,
+        numberOfEmployees,
+        goal,
+        notes,
+        activeFlows,
+        ...featureSettings,
       })
       .select()
       .single();
@@ -96,9 +130,14 @@ export async function POST(request: NextRequest) {
 
     // Log action to history
     await supabaseAdmin.from('key_history').insert({
-      key_id: data.id,
+      key_value: licenseKey,
       action: 'created',
-      details: { valid_days, features },
+      details: { 
+        valid_days, 
+        preset,
+        isTrial,
+        keyType 
+      },
     });
 
     return NextResponse.json({ data });
@@ -110,4 +149,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

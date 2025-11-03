@@ -6,13 +6,19 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const keyId = params.id;
+    const keyValue = params.id;
 
-    // Update key status to disabled
+    // Set expiresAt to today to disable the key
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of day
+
+    // Update key to disabled (expiresAt = today)
     const { data, error } = await supabaseAdmin
       .from('license_keys')
-      .update({ status: 'disabled' })
-      .eq('id', keyId)
+      .update({ 
+        expiresAt: today.toISOString()
+      })
+      .eq('key', keyValue)
       .select()
       .single();
 
@@ -22,9 +28,9 @@ export async function POST(
 
     // Log action to history
     await supabaseAdmin.from('key_history').insert({
-      key_id: keyId,
+      key_value: keyValue,
       action: 'disabled',
-      details: {},
+      details: { disabled_at: today.toISOString() },
     });
 
     return NextResponse.json({ data });
@@ -36,4 +42,3 @@ export async function POST(
     );
   }
 }
-

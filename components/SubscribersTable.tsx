@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
+
+const PAGE_SIZE = 10;
 
 interface Subscriber {
   email: string;
@@ -13,6 +15,9 @@ interface Subscriber {
   activeKeys: number;
   latestCreatedAt: string;
   hasActiveTrial: boolean;
+  fullName?: string;
+  companyName?: string;
+  status: 'trial' | 'customer' | 'inactive';
 }
 
 export default function SubscribersTable() {
@@ -20,32 +25,88 @@ export default function SubscribersTable() {
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'trial' | 'customer' | 'inactive'>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalSubscribers, setTotalSubscribers] = useState(0);
 
-  const fetchSubscribers = async () => {
+  const fetchSubscribers = useCallback(async () => {
     try {
-      const url = search 
-        ? `/api/subscribers?search=${encodeURIComponent(search)}`
-        : '/api/subscribers';
-      
-      const response = await fetch(url);
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        pageSize: PAGE_SIZE.toString(),
+      });
+
+      if (appliedSearch) {
+        params.set('search', appliedSearch);
+      }
+
+      if (statusFilter !== 'all') {
+        params.set('status', statusFilter);
+      }
+
+      const response = await fetch(`/api/subscribers?${params.toString()}`);
       const result = await response.json();
-      
+
       if (response.ok) {
         setSubscribers(result.data || []);
+        if (result.meta) {
+          setTotalPages(result.meta.totalPages ?? 1);
+          setTotalSubscribers(result.meta.total ?? (result.data?.length ?? 0));
+          if (
+            typeof result.meta.page === 'number' &&
+            result.meta.page >= 1 &&
+            result.meta.page !== currentPage
+          ) {
+            setCurrentPage(result.meta.page);
+          }
+        } else {
+          setTotalPages(1);
+          setTotalSubscribers(result.data?.length ?? 0);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch subscribers:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [appliedSearch, statusFilter, currentPage]);
 
   useEffect(() => {
+    setLoading(true);
     fetchSubscribers();
-  }, []);
+  }, [fetchSubscribers]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmed = search.trim();
+    if (trimmed === appliedSearch && currentPage === 1) return;
+    setCurrentPage(1);
+    setAppliedSearch(trimmed);
+  };
+
+  const handleStatusChange = (value: 'all' | 'trial' | 'customer' | 'inactive') => {
+    if (value === statusFilter && currentPage === 1) return;
+    setCurrentPage(1);
+    setStatusFilter(value);
+  };
+
+  const handleClear = () => {
+    if (!search && !appliedSearch) return;
+    setSearch('');
+    if (appliedSearch) {
+      setCurrentPage(1);
+      setAppliedSearch('');
+    }
+  };
+
+  const handlePageChange = (page: number) => {
+    if (page === currentPage) return;
+    setCurrentPage(page);
+  };
+
+  const handleRefresh = () => {
     setLoading(true);
     fetchSubscribers();
   };
@@ -53,6 +114,11 @@ export default function SubscribersTable() {
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), 'MMM dd, yyyy');
   };
+
+  const firstItemIndex =
+    totalSubscribers === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const lastItemIndex =
+    totalSubscribers === 0 ? 0 : firstItemIndex + subscribers.length - 1;
 
   if (loading && subscribers.length === 0) {
     return (
@@ -67,7 +133,7 @@ export default function SubscribersTable() {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800">Subscribers</h2>
         <button
-          onClick={() => fetchSubscribers()}
+          onClick={handleRefresh}
           className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
         >
           Refresh
@@ -76,33 +142,47 @@ export default function SubscribersTable() {
 
       {/* Search */}
       <form onSubmit={handleSearch} className="mb-6">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by email or domain..."
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          />
-          <button
-            type="submit"
-            className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            Search
-          </button>
-          {search && (
+        <div className="flex flex-col gap-3 md:flex-row md:items-center">
+          <div className="flex flex-1 gap-2">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by email, domain, or key..."
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
             <button
-              type="button"
-              onClick={() => {
-                setSearch('');
-                setLoading(true);
-                setTimeout(fetchSubscribers, 100);
-              }}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              type="submit"
+              className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
             >
-              Clear
+              Search
             </button>
-          )}
+            {(search || appliedSearch) && (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <label htmlFor="status-filter" className="text-sm font-medium text-gray-600">
+              Status
+            </label>
+            <select
+              id="status-filter"
+              value={statusFilter}
+              onChange={(e) => handleStatusChange(e.target.value as 'all' | 'trial' | 'customer' | 'inactive')}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              <option value="all">Any</option>
+              <option value="trial">In Trial</option>
+              <option value="customer">Customer</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
         </div>
       </form>
 
@@ -162,6 +242,13 @@ export default function SubscribersTable() {
                         <div className="text-sm font-medium text-indigo-600 hover:text-indigo-800">
                           {subscriber.email}
                         </div>
+                        {(subscriber.fullName || subscriber.companyName) && (
+                          <div className="text-xs text-gray-500">
+                            {subscriber.fullName && subscriber.companyName 
+                              ? `${subscriber.fullName} • ${subscriber.companyName}`
+                              : subscriber.fullName || subscriber.companyName}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </td>
@@ -204,11 +291,11 @@ export default function SubscribersTable() {
                     {formatDate(subscriber.latestCreatedAt)}
                   </td>
                   <td className="px-4 py-4 text-sm">
-                    {subscriber.hasActiveTrial ? (
+                    {subscriber.status === 'trial' ? (
                       <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
                         In Trial
                       </span>
-                    ) : subscriber.activeKeys > 0 ? (
+                    ) : subscriber.status === 'customer' ? (
                       <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
                         Customer
                       </span>
@@ -226,12 +313,69 @@ export default function SubscribersTable() {
       </div>
 
       {/* Summary */}
-      {subscribers.length > 0 && (
-        <div className="mt-4 text-sm text-gray-600">
-          Showing {subscribers.length} subscriber{subscribers.length !== 1 ? 's' : ''}
+      {totalSubscribers > 0 && (
+        <div className="mt-4 flex flex-col gap-4 text-sm text-gray-600 md:flex-row md:items-center md:justify-between">
+          <div>
+            Showing {firstItemIndex}-{lastItemIndex} of {totalSubscribers} subscriber
+            {totalSubscribers !== 1 ? 's' : ''}
+          </div>
+          {totalPages > 1 && (
+            <div className="flex flex-col items-center gap-3 md:flex-row md:gap-4">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  className={`px-3 py-1 text-xs font-medium rounded-lg border transition-colors ${
+                    currentPage === 1
+                      ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                  }`}
+                >
+                  Previous
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, index) => {
+                    const pageNumber = index + 1;
+                    return (
+                      <button
+                        key={pageNumber}
+                        type="button"
+                        onClick={() => handlePageChange(pageNumber)}
+                        className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
+                          pageNumber === currentPage
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                        }`}
+                      >
+                        {pageNumber}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  type="button"
+                  disabled={currentPage === totalPages}
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  className={`px-3 py-1 text-xs font-medium rounded-lg border transition-colors ${
+                    currentPage === totalPages
+                      ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                  }`}
+                >
+                  Next
+                </button>
+              </div>
+              <div className="text-xs text-gray-500">
+                Page {currentPage} of {totalPages}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
+
+
 
