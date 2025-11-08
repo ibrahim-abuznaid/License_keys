@@ -18,10 +18,23 @@ export function validateCredentials(username: string, password: string): boolean
 
   if (!validUsername || !validPassword) {
     console.error('ADMIN_USERNAME or ADMIN_PASSWORD not set in environment variables');
+    console.error('Available env vars:', Object.keys(process.env).filter(k => k.includes('ADMIN')));
     return false;
   }
 
-  return username === validUsername && password === validPassword;
+  console.log('Validating credentials:', {
+    usernameProvided: !!username,
+    passwordProvided: !!password,
+    usernameLength: username.length,
+    passwordLength: password.length,
+    envUsernameSet: !!validUsername,
+    envPasswordSet: !!validPassword,
+  });
+
+  const isValid = username === validUsername && password === validPassword;
+  console.log('Credentials valid:', isValid);
+  
+  return isValid;
 }
 
 /**
@@ -29,9 +42,21 @@ export function validateCredentials(username: string, password: string): boolean
  */
 export async function setAuthCookie() {
   const cookieStore = await cookies();
+  
+  // Only use secure cookies if explicitly enabled via environment variable
+  // Set USE_SECURE_COOKIES=true when you have HTTPS configured
+  // Defaults to false to work on HTTP during initial deployment
+  const useSecureCookies = process.env.USE_SECURE_COOKIES === 'true';
+  
+  console.log('Setting auth cookie:', {
+    secure: useSecureCookies,
+    nodeEnv: process.env.NODE_ENV,
+    useSecureCookiesEnv: process.env.USE_SECURE_COOKIES
+  });
+  
   cookieStore.set(AUTH_COOKIE_NAME, 'authenticated', {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: useSecureCookies,
     sameSite: 'lax',
     maxAge: COOKIE_MAX_AGE,
     path: '/',
