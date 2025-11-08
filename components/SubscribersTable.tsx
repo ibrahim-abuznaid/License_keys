@@ -46,7 +46,16 @@ export default function SubscribersTable() {
         params.set('status', statusFilter);
       }
 
-      const response = await fetch(`/api/subscribers?${params.toString()}`);
+      // Add timestamp to prevent caching
+      params.set('_t', Date.now().toString());
+
+      const response = await fetch(`/api/subscribers?${params.toString()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
+      });
       const result = await response.json();
 
       if (response.ok) {

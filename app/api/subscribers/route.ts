@@ -185,16 +185,25 @@ export async function GET(request: NextRequest) {
     console.log('✅ SUBSCRIBERS API - Request Complete');
     console.log('========================================\n');
 
-    return NextResponse.json({
-      success: true,
-      data,
-      meta: {
-        total,
-        page: safePage,
-        pageSize,
-        totalPages,
+    return NextResponse.json(
+      {
+        success: true,
+        data,
+        meta: {
+          total,
+          page: safePage,
+          pageSize,
+          totalPages,
+        },
       },
-    });
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      }
+    );
   } catch (error) {
     console.error('Error fetching subscribers:', error);
     return NextResponse.json(
