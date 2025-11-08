@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { generateLicenseKey } from '@/lib/key-generator';
 import { CreateLicenseKeyInput, FEATURE_PRESETS, LICENSE_KEY_FEATURES, LicenseKeyFeature } from '@/lib/types';
 import { sendTrialKeyEmail } from '@/lib/email-service';
+import { KEY_HISTORY_TABLE, LICENSE_KEYS_TABLE } from '@/lib/config';
 
 // Disable caching for this route
 export const dynamic = 'force-dynamic';
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
 
     let query = supabaseAdmin
-      .from('license_keys')
+      .from(LICENSE_KEYS_TABLE)
       .select('*')
       .order('createdAt', { ascending: false });
 
@@ -78,14 +79,14 @@ export async function POST(request: NextRequest) {
     // Calculate expiry date (null if subscribed, otherwise set expiry)
     let expiresAt: string | null = null;
     let isTrial = false;
-    let keyType: 'trial' | 'development' | 'production' = 'production';
+    let keyType: 'development' | 'production' = 'production';
 
     if (valid_days !== null && valid_days !== undefined) {
       const expiryDate = new Date();
       expiryDate.setDate(expiryDate.getDate() + valid_days);
       expiresAt = expiryDate.toISOString();
       isTrial = true;
-      keyType = 'trial';
+      keyType = 'development'; // Trial keys are created as development type
     }
 
     // Get feature preset and merge any overrides from the request
@@ -106,11 +107,12 @@ export async function POST(request: NextRequest) {
 
     // Insert into database
     const { data, error } = await supabaseAdmin
-      .from('license_keys')
+      .from(LICENSE_KEYS_TABLE)
       .insert({
         key: licenseKey,
         email,
         expiresAt,
+        activatedAt: new Date().toISOString(), // Set activation time when key is created
         isTrial,
         keyType,
         fullName,
@@ -129,7 +131,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Log action to history
-    await supabaseAdmin.from('key_history').insert({
+    await supabaseAdmin.from(KEY_HISTORY_TABLE).insert({
       key_value: licenseKey,
       action: 'created',
       details: { 

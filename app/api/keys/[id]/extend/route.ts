@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { KEY_HISTORY_TABLE, LICENSE_KEYS_TABLE } from '@/lib/config';
 
 export async function POST(
   request: NextRequest,
@@ -18,7 +19,7 @@ export async function POST(
 
     // Get current key
     const { data: currentKey, error: fetchError } = await supabaseAdmin
-      .from('license_keys')
+      .from(LICENSE_KEYS_TABLE)
       .select('*')
       .eq('key', keyValue)
       .single();
@@ -45,7 +46,7 @@ export async function POST(
 
     // Update key
     const { data, error } = await supabaseAdmin
-      .from('license_keys')
+      .from(LICENSE_KEYS_TABLE)
       .update({ 
         expiresAt: currentExpiry.toISOString(),
       })
@@ -58,7 +59,7 @@ export async function POST(
     }
 
     // Log action to history
-    await supabaseAdmin.from('key_history').insert({
+    await supabaseAdmin.from(KEY_HISTORY_TABLE).insert({
       key_value: keyValue,
       action: 'extended',
       details: { additional_days, new_expiry: currentExpiry.toISOString() },

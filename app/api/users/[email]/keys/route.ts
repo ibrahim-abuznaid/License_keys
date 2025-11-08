@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
+import { LICENSE_KEYS_TABLE } from '@/lib/config';
 
 // Disable caching for this route
 export const dynamic = 'force-dynamic';
@@ -13,8 +14,8 @@ export async function GET(
     const email = decodeURIComponent(params.email);
 
     // Fetch all keys for this email
-    const { data: keys, error } = await supabase
-      .from('license_keys')
+    const { data: keys, error } = await supabaseAdmin
+      .from(LICENSE_KEYS_TABLE)
       .select('*')
       .eq('email', email)
       .order('createdAt', { ascending: false });

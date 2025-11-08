@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { FEATURE_PRESETS, FeaturePreset, LicenseKey, LicenseKeyFeature, LICENSE_KEY_FEATURES } from '@/lib/types';
+import { FEATURE_PRESETS, FeaturePreset, LicenseKey, LicenseKeyFeature, LICENSE_KEY_FEATURES, getKeyStatus } from '@/lib/types';
 import { EmailDraftModal } from '@/components/EmailDraftModal';
+import { format } from 'date-fns';
 
 interface KeyGenerationFormProps {
   onSuccess?: () => void;
@@ -69,6 +70,44 @@ export default function KeyGenerationForm({ onSuccess, redirectToSubscriber = fa
     key: null 
   });
   const [redirectEmail, setRedirectEmail] = useState<string | null>(null);
+  const [existingKeys, setExistingKeys] = useState<LicenseKey[]>([]);
+  const [checkingEmail, setCheckingEmail] = useState(false);
+
+  // Check for existing keys when email changes
+  useEffect(() => {
+    const checkExistingKeys = async () => {
+      if (!formData.email || !formData.email.includes('@')) {
+        setExistingKeys([]);
+        return;
+      }
+
+      setCheckingEmail(true);
+      console.log('🔍 Checking for existing keys for:', formData.email);
+      
+      try {
+        const response = await fetch(`/api/users/${encodeURIComponent(formData.email)}/keys`);
+        console.log('📊 Response status:', response.status);
+        
+        if (response.ok) {
+          const result = await response.json();
+          console.log('✅ Found keys:', result.data?.length || 0, result.data);
+          setExistingKeys(result.data || []);
+        } else {
+          console.log('⚠️ No keys found or error');
+          setExistingKeys([]);
+        }
+      } catch (error) {
+        console.error('❌ Failed to check existing keys:', error);
+        setExistingKeys([]);
+      } finally {
+        setCheckingEmail(false);
+      }
+    };
+
+    // Debounce the check
+    const timeoutId = setTimeout(checkExistingKeys, 500);
+    return () => clearTimeout(timeoutId);
+  }, [formData.email]);
 
   const goToSubscriberPage = useCallback(
     (email?: string) => {
@@ -138,6 +177,7 @@ export default function KeyGenerationForm({ onSuccess, redirectToSubscriber = fa
       });
       setFeatures(buildFeatureState(DEFAULT_PRESET));
       setSendEmail(true);
+      setExistingKeys([]); // Clear existing keys warning
 
       onSuccess?.();
     } catch (err: any) {
@@ -207,6 +247,67 @@ export default function KeyGenerationForm({ onSuccess, redirectToSubscriber = fa
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           placeholder="customer@example.com"
         />
+        
+        {/* Checking email indicator */}
+        {checkingEmail && (
+          <p className="mt-2 text-sm text-gray-500">
+            Checking for existing keys...
+          </p>
+        )}
+
+        {/* Warning for existing keys */}
+        {!checkingEmail && existingKeys.length > 0 && (
+          <div className="mt-3 p-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <svg className="h-6 w-6 text-yellow-600" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3 flex-1">
+                <h3 className="text-base font-bold text-yellow-900">
+                  ⚠️ Warning: This user already has {existingKeys.length} license {existingKeys.length === 1 ? 'key' : 'keys'}!
+                </h3>
+                <div className="mt-2 text-sm text-yellow-700">
+                  <ul className="list-disc pl-5 space-y-1">
+                    {existingKeys.slice(0, 3).map((key) => {
+                      const status = getKeyStatus(key);
+                      const statusColor = status === 'active' ? 'text-green-700' : status === 'expired' ? 'text-red-700' : 'text-gray-700';
+                      return (
+                        <li key={key.key}>
+                          <span className="font-medium">{key.keyType}</span> key 
+                          <span className={`ml-1 ${statusColor}`}>({status})</span>
+                          {key.activatedAt && (
+                            <span className="ml-1">
+                              - Activated: {format(new Date(key.activatedAt), 'MMM dd, yyyy')}
+                            </span>
+                          )}
+                        </li>
+                      );
+                    })}
+                    {existingKeys.length > 3 && (
+                      <li className="text-yellow-600">
+                        ... and {existingKeys.length - 3} more
+                      </li>
+                    )}
+                  </ul>
+                </div>
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/users/${encodeURIComponent(formData.email)}`)}
+                    className="text-sm font-medium text-yellow-800 hover:text-yellow-900 underline"
+                  >
+                    View all keys for this user →
+                  </button>
+                </div>
+                <p className="mt-3 text-sm font-medium text-yellow-800 bg-yellow-100 p-2 rounded">
+                  ⚠️ Be careful! You can still proceed to generate a new key, but make sure this is intentional.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Full Name & Company Name */}

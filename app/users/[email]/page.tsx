@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { InputModal, ConfirmModal, AlertModal } from '@/components/Modal';
 import { EditKeyModal } from '@/components/EditKeyModal';
 import { EmailDraftModal } from '@/components/EmailDraftModal';
+import ReactivateKeyModal from '@/components/ReactivateKeyModal';
 
 export default function UserDetailPage() {
   const params = useParams();
@@ -21,6 +22,7 @@ export default function UserDetailPage() {
   const [extendModal, setExtendModal] = useState<{ isOpen: boolean; keyValue: string | null }>({ isOpen: false, keyValue: null });
   const [dealClosedModal, setDealClosedModal] = useState<{ isOpen: boolean; keyValue: string | null }>({ isOpen: false, keyValue: null });
   const [disableModal, setDisableModal] = useState<{ isOpen: boolean; keyValue: string | null }>({ isOpen: false, keyValue: null });
+  const [reactivateModal, setReactivateModal] = useState<{ isOpen: boolean; key: LicenseKey | null }>({ isOpen: false, key: null });
   const [editModal, setEditModal] = useState<{ isOpen: boolean; key: LicenseKey | null }>({ isOpen: false, key: null });
   const [emailDraftModal, setEmailDraftModal] = useState<{ 
     isOpen: boolean; 
@@ -145,10 +147,23 @@ export default function UserDetailPage() {
   };
 
   const handleReactivateKey = async (keyValue: string) => {
+    const key = keys.find(k => k.key === keyValue);
+    if (!key) return;
+    setReactivateModal({ isOpen: true, key });
+  };
+
+  const confirmReactivateKey = async (days: number) => {
+    const keyValue = reactivateModal.key?.key;
+    if (!keyValue) return;
+
     setActionLoading(keyValue);
+    setReactivateModal({ isOpen: false, key: null });
+    
     try {
       const response = await fetch(`/api/keys/${keyValue}/reactivate`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ days }),
       });
 
       if (response.ok) {
@@ -264,15 +279,17 @@ export default function UserDetailPage() {
     );
   };
 
-  const getKeyTypeBadge = (type: string) => {
+  const getKeyTypeBadge = (key: LicenseKey) => {
+    // Show "TRIAL" badge for trial keys, otherwise show the actual keyType
+    const displayType = key.isTrial ? 'trial' : key.keyType;
     const colors = {
       trial: 'bg-blue-100 text-blue-800',
       development: 'bg-purple-100 text-purple-800',
       production: 'bg-indigo-100 text-indigo-800',
     };
     return (
-      <span className={`px-3 py-1 text-sm font-medium rounded-full ${colors[type as keyof typeof colors] || 'bg-gray-100 text-gray-800'}`}>
-        {type.toUpperCase()}
+      <span className={`px-3 py-1 text-sm font-medium rounded-full ${colors[displayType as keyof typeof colors] || 'bg-gray-100 text-gray-800'}`}>
+        {displayType.toUpperCase()}
       </span>
     );
   };
@@ -310,9 +327,9 @@ export default function UserDetailPage() {
     return features.length;
   };
 
-  // Group keys by type
-  const trialKeys = keys.filter(k => k.keyType === 'trial');
-  const developmentKeys = keys.filter(k => k.keyType === 'development');
+  // Group keys by type (trial keys are now identified by isTrial flag)
+  const trialKeys = keys.filter(k => k.isTrial);
+  const developmentKeys = keys.filter(k => k.keyType === 'development' && !k.isTrial);
   const productionKeys = keys.filter(k => k.keyType === 'production');
 
   if (loading) {
@@ -559,6 +576,15 @@ export default function UserDetailPage() {
         developmentKey={emailDraftModal.developmentKey}
         activeFlowsLimit={emailDraftModal.activeFlowsLimit}
       />
+
+      <ReactivateKeyModal
+        isOpen={reactivateModal.isOpen}
+        onClose={() => setReactivateModal({ isOpen: false, key: null })}
+        onConfirm={confirmReactivateKey}
+        keyValue={reactivateModal.key?.key || ''}
+        email={reactivateModal.key?.email || ''}
+        isTrial={reactivateModal.key?.isTrial || false}
+      />
     </div>
   );
 }
@@ -572,7 +598,7 @@ interface KeyCardProps {
   onReactivate: (id: string) => void;
   actionLoading: string | null;
   getStatusBadge: (key: LicenseKey) => JSX.Element;
-  getKeyTypeBadge: (type: string) => JSX.Element;
+  getKeyTypeBadge: (key: LicenseKey) => JSX.Element;
   formatDate: (date: string | null) => string;
   getEnabledFeaturesCount: (key: LicenseKey) => number;
   setExtendModal: (state: { isOpen: boolean; keyValue: string | null }) => void;
@@ -605,7 +631,7 @@ function KeyCard({
     <div className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
-          {getKeyTypeBadge(licenseKey.keyType)}
+          {getKeyTypeBadge(licenseKey)}
           {getStatusBadge(licenseKey)}
         </div>
       </div>

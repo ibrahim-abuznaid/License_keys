@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { sendTrialKeyEmail, sendCustomEmail } from '@/lib/email-service';
+import { KEY_HISTORY_TABLE, LICENSE_KEYS_TABLE } from '@/lib/config';
 
 export async function POST(
   request: NextRequest,
@@ -13,7 +14,7 @@ export async function POST(
 
     // Get license key
     const { data: licenseKey, error: fetchError } = await supabaseAdmin
-      .from('license_keys')
+      .from(LICENSE_KEYS_TABLE)
       .select('*')
       .eq('key', keyValue)
       .single();
@@ -47,7 +48,7 @@ export async function POST(
     }
 
     // Log action to history
-    await supabaseAdmin.from('key_history').insert({
+    await supabaseAdmin.from(KEY_HISTORY_TABLE).insert({
       key_value: keyValue,
       action: 'email_sent',
       details: { email_type: subject && htmlBody ? 'custom' : 'trial' },

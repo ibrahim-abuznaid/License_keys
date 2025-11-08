@@ -14,7 +14,7 @@ interface EditKeyModalProps {
 export function EditKeyModal({ isOpen, onClose, onSave, licenseKey }: EditKeyModalProps) {
   const [formData, setFormData] = useState({
     email: '',
-    keyType: 'production' as 'trial' | 'development' | 'production',
+    keyType: 'production' as 'development' | 'production',
     isTrial: false,
     expiresAt: '',
     activeFlows: '',
@@ -268,7 +268,6 @@ export function EditKeyModal({ isOpen, onClose, onSave, licenseKey }: EditKeyMod
               onChange={(e) => setFormData(prev => ({ ...prev, keyType: e.target.value as any }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             >
-              <option value="trial">Trial</option>
               <option value="development">Development</option>
               <option value="production">Production</option>
             </select>

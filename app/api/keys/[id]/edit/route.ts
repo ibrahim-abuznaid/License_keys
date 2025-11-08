@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { KEY_HISTORY_TABLE, LICENSE_KEYS_TABLE } from '@/lib/config';
 
 export async function PUT(
   request: NextRequest,
@@ -63,7 +64,7 @@ export async function PUT(
 
     // Update the key
     const { data, error } = await supabaseAdmin
-      .from('license_keys')
+      .from(LICENSE_KEYS_TABLE)
       .update(updateData)
       .eq('key', keyValue)
       .select()
@@ -74,7 +75,7 @@ export async function PUT(
     }
 
     // Log the action
-    await supabaseAdmin.from('key_history').insert({
+    await supabaseAdmin.from(KEY_HISTORY_TABLE).insert({
       key_value: keyValue,
       action: 'updated',
       details: { updated_fields: Object.keys(updateData) },

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { generateLicenseKey } from '@/lib/key-generator';
 import { sendDealClosedEmail, sendCustomEmail } from '@/lib/email-service';
+import { KEY_HISTORY_TABLE, LICENSE_KEYS_TABLE } from '@/lib/config';
 
 export async function POST(
   request: NextRequest,
@@ -14,7 +15,7 @@ export async function POST(
 
     // Get current trial key
     const { data: trialKey, error: fetchError } = await supabaseAdmin
-      .from('license_keys')
+      .from(LICENSE_KEYS_TABLE)
       .select('*')
       .eq('key', trialKeyValue)
       .single();
@@ -28,9 +29,10 @@ export async function POST(
 
     // Convert trial key to development key (subscribed, no expiry)
     const { data: developmentKey, error: devUpdateError } = await supabaseAdmin
-      .from('license_keys')
+      .from(LICENSE_KEYS_TABLE)
       .update({
         expiresAt: null, // null means no expiry = subscribed
+        activatedAt: new Date().toISOString(), // Set activation time when converting to subscribed
         isTrial: false,
         keyType: 'development',
         activeFlows: activeFlows || trialKey.activeFlows,
@@ -47,11 +49,12 @@ export async function POST(
     const productionKeyValue = generateLicenseKey();
 
     const { data: productionKey, error: prodInsertError } = await supabaseAdmin
-      .from('license_keys')
+      .from(LICENSE_KEYS_TABLE)
       .insert({
         key: productionKeyValue,
         email: trialKey.email,
         expiresAt: null, // null means no expiry = subscribed
+        activatedAt: new Date().toISOString(), // Set activation time when key is created
         isTrial: false,
         keyType: 'production',
         activeFlows: activeFlows || trialKey.activeFlows,
@@ -93,7 +96,7 @@ export async function POST(
     }
 
     // Log actions to history
-    await supabaseAdmin.from('key_history').insert([
+    await supabaseAdmin.from(KEY_HISTORY_TABLE).insert([
       {
         key_value: trialKeyValue,
         action: 'deal_closed',

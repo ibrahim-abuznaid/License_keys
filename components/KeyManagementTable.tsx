@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { InputModal, ConfirmModal, AlertModal } from '@/components/Modal';
 import { EditKeyModal } from '@/components/EditKeyModal';
 import { EmailDraftModal } from '@/components/EmailDraftModal';
+import ReactivateKeyModal from '@/components/ReactivateKeyModal';
 
 export default function KeyManagementTable() {
   const router = useRouter();
@@ -19,6 +20,7 @@ export default function KeyManagementTable() {
   const [extendModal, setExtendModal] = useState<{ isOpen: boolean; keyValue: string | null }>({ isOpen: false, keyValue: null });
   const [dealClosedModal, setDealClosedModal] = useState<{ isOpen: boolean; keyValue: string | null }>({ isOpen: false, keyValue: null });
   const [disableModal, setDisableModal] = useState<{ isOpen: boolean; keyValue: string | null }>({ isOpen: false, keyValue: null });
+  const [reactivateModal, setReactivateModal] = useState<{ isOpen: boolean; key: LicenseKey | null }>({ isOpen: false, key: null });
   const [editModal, setEditModal] = useState<{ isOpen: boolean; key: LicenseKey | null }>({ isOpen: false, key: null });
   const [emailDraftModal, setEmailDraftModal] = useState<{ 
     isOpen: boolean; 
@@ -153,10 +155,23 @@ export default function KeyManagementTable() {
   };
 
   const handleReactivateKey = async (keyValue: string) => {
+    const key = keys.find(k => k.key === keyValue);
+    if (!key) return;
+    setReactivateModal({ isOpen: true, key });
+  };
+
+  const confirmReactivateKey = async (days: number) => {
+    const keyValue = reactivateModal.key?.key;
+    if (!keyValue) return;
+
     setActionLoading(keyValue);
+    setReactivateModal({ isOpen: false, key: null });
+    
     try {
       const response = await fetch(`/api/keys/${keyValue}/reactivate`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ days }),
       });
 
       if (response.ok) {
@@ -260,15 +275,17 @@ export default function KeyManagementTable() {
     );
   };
 
-  const getKeyTypeBadge = (type: string) => {
+  const getKeyTypeBadge = (key: LicenseKey) => {
+    // Show "TRIAL" badge for trial keys, otherwise show the actual keyType
+    const displayType = key.isTrial ? 'trial' : key.keyType;
     const colors = {
       trial: 'bg-blue-100 text-blue-800',
       development: 'bg-purple-100 text-purple-800',
       production: 'bg-indigo-100 text-indigo-800',
     };
     return (
-      <span className={`px-2 py-1 text-xs font-medium rounded-full ${colors[type as keyof typeof colors] || 'bg-gray-100 text-gray-800'}`}>
-        {type.toUpperCase()}
+      <span className={`px-2 py-1 text-xs font-medium rounded-full ${colors[displayType as keyof typeof colors] || 'bg-gray-100 text-gray-800'}`}>
+        {displayType.toUpperCase()}
       </span>
     );
   };
@@ -385,7 +402,7 @@ export default function KeyManagementTable() {
                     </code>
                   </td>
                   <td className="px-4 py-4 text-sm">
-                    {getKeyTypeBadge(key.keyType)}
+                    {getKeyTypeBadge(key)}
                   </td>
                   <td className="px-4 py-4 text-sm">
                     {getStatusBadge(key)}
@@ -534,6 +551,15 @@ export default function KeyManagementTable() {
         productionKey={emailDraftModal.productionKey}
         developmentKey={emailDraftModal.developmentKey}
         activeFlowsLimit={emailDraftModal.activeFlowsLimit}
+      />
+
+      <ReactivateKeyModal
+        isOpen={reactivateModal.isOpen}
+        onClose={() => setReactivateModal({ isOpen: false, key: null })}
+        onConfirm={confirmReactivateKey}
+        keyValue={reactivateModal.key?.key || ''}
+        email={reactivateModal.key?.email || ''}
+        isTrial={reactivateModal.key?.isTrial || false}
       />
     </div>
   );

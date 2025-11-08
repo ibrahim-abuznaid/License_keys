@@ -1,4 +1,4 @@
-export type KeyType = 'trial' | 'development' | 'production';
+export type KeyType = 'development' | 'production';
 
 export interface LicenseKey {
   key: string;
