@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
     }>();
 
     console.log('🔄 Processing keys to group by email...');
-    
+
     keys?.forEach(key => {
       const typedKey = key as LicenseKey;
       const email = typedKey.email;
@@ -187,14 +187,14 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(
       {
-        success: true,
-        data,
-        meta: {
-          total,
-          page: safePage,
-          pageSize,
-          totalPages,
-        },
+      success: true,
+      data,
+      meta: {
+        total,
+        page: safePage,
+        pageSize,
+        totalPages,
+      },
       },
       {
         headers: {

@@ -76,12 +76,22 @@ export function getKeyStatus(key: LicenseKey): KeyStatus {
   }
   const expiresAt = new Date(key.expiresAt);
   const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const expireDate = new Date(expiresAt.getFullYear(), expiresAt.getMonth(), expiresAt.getDate());
   
-  if (expireDate.getTime() < today.getTime()) {
+  // Use UTC dates to avoid timezone issues
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+  const expireDate = new Date(Date.UTC(expiresAt.getUTCFullYear(), expiresAt.getUTCMonth(), expiresAt.getUTCDate(), 0, 0, 0, 0));
+  
+  const daysDiff = Math.floor((expireDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (daysDiff < 0) {
+    // Expired in the past
+    if (daysDiff >= -1) {
+      // Expired today or yesterday (likely manually disabled)
+      return 'disabled';
+    }
     return 'expired';
-  } else if (expireDate.getTime() === today.getTime()) {
+  } else if (daysDiff === 0) {
+    // Expires today (manually disabled)
     return 'disabled';
   }
   return 'active';

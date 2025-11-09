@@ -10,8 +10,9 @@ export async function POST(
     const keyValue = params.id;
 
     // Set expiresAt to today to disable the key
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set to start of day
+    const now = new Date();
+    // Use UTC to avoid timezone issues
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
 
     // Update key to disabled (expiresAt = today)
     const { data, error } = await supabaseAdmin
