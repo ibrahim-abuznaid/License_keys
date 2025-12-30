@@ -137,6 +137,7 @@ export default function KeyGenerationForm({ onSuccess, redirectToSubscriber = fa
         activeFlows: formData.activeFlows ? parseInt(formData.activeFlows) : undefined,
         preset: formData.preset,
         ...features,
+        customDomainsEnabled: false, // Always false
       };
 
       // Create license key
@@ -193,6 +194,8 @@ export default function KeyGenerationForm({ onSuccess, redirectToSubscriber = fa
   };
 
   const handleFeatureChange = (feature: LicenseKeyFeature, value: boolean) => {
+    // customDomainsEnabled is always false
+    if (feature === 'customDomainsEnabled') return;
     setFeatures(prev => ({ ...prev, [feature]: value }));
   };
 
@@ -467,20 +470,30 @@ export default function KeyGenerationForm({ onSuccess, redirectToSubscriber = fa
           Key Abilities
         </label>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {LICENSE_KEY_FEATURES.map((feature) => (
-            <label
-              key={feature}
-              className="flex items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700"
-            >
-              <input
-                type="checkbox"
-                checked={features[feature]}
-                onChange={(e) => handleFeatureChange(feature, e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <span className="leading-5">{FEATURE_LABELS[feature]}</span>
-            </label>
-          ))}
+          {LICENSE_KEY_FEATURES.map((feature) => {
+            const isCustomDomains = feature === 'customDomainsEnabled';
+            return (
+              <label
+                key={feature}
+                className={`flex items-start gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm ${
+                  isCustomDomains ? 'bg-gray-100 opacity-50 cursor-not-allowed' : 'bg-gray-50 text-gray-700'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={isCustomDomains ? false : features[feature]}
+                  onChange={(e) => handleFeatureChange(feature, e.target.checked)}
+                  disabled={isCustomDomains}
+                  className={`mt-1 h-4 w-4 rounded border-gray-300 ${
+                    isCustomDomains ? 'text-gray-400' : 'text-indigo-600 focus:ring-indigo-500'
+                  }`}
+                />
+                <span className={`leading-5 ${isCustomDomains ? 'text-gray-500' : ''}`}>
+                  {FEATURE_LABELS[feature]}{isCustomDomains ? ' (disabled)' : ''}
+                </span>
+              </label>
+            );
+          })}
         </div>
         <p className="mt-2 text-xs text-gray-500">
           Toggle individual abilities to customize the key beyond the selected preset.

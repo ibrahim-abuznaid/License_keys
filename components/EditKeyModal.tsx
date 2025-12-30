@@ -34,7 +34,7 @@ export function EditKeyModal({ isOpen, onClose, onSave, licenseKey }: EditKeyMod
     managePiecesEnabled: true,
     manageTemplatesEnabled: true,
     apiKeysEnabled: true,
-    customDomainsEnabled: true,
+    customDomainsEnabled: false,
     projectRolesEnabled: true,
     flowIssuesEnabled: true,
     alertsEnabled: true,
@@ -111,7 +111,7 @@ export function EditKeyModal({ isOpen, onClose, onSave, licenseKey }: EditKeyMod
       managePiecesEnabled: formData.managePiecesEnabled,
       manageTemplatesEnabled: formData.manageTemplatesEnabled,
       apiKeysEnabled: formData.apiKeysEnabled,
-      customDomainsEnabled: formData.customDomainsEnabled,
+      customDomainsEnabled: false, // Always false
       projectRolesEnabled: formData.projectRolesEnabled,
       flowIssuesEnabled: formData.flowIssuesEnabled,
       alertsEnabled: formData.alertsEnabled,
@@ -141,7 +141,7 @@ export function EditKeyModal({ isOpen, onClose, onSave, licenseKey }: EditKeyMod
       managePiecesEnabled: enabled,
       manageTemplatesEnabled: enabled,
       apiKeysEnabled: enabled,
-      customDomainsEnabled: enabled,
+      customDomainsEnabled: false, // Always false
       projectRolesEnabled: enabled,
       flowIssuesEnabled: enabled,
       alertsEnabled: enabled,
@@ -421,14 +421,14 @@ export function EditKeyModal({ isOpen, onClose, onSave, licenseKey }: EditKeyMod
               />
               <span className="text-sm text-gray-700">API Keys</span>
             </label>
-            <label className="flex items-center space-x-2 cursor-pointer">
+            <label className="flex items-center space-x-2 cursor-not-allowed opacity-50">
               <input
                 type="checkbox"
-                checked={formData.customDomainsEnabled}
-                onChange={(e) => setFormData(prev => ({ ...prev, customDomainsEnabled: e.target.checked }))}
-                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                checked={false}
+                disabled
+                className="w-4 h-4 text-gray-400 border-gray-300 rounded"
               />
-              <span className="text-sm text-gray-700">Custom Domains</span>
+              <span className="text-sm text-gray-500">Custom Domains (disabled)</span>
             </label>
             <label className="flex items-center space-x-2 cursor-pointer">
               <input

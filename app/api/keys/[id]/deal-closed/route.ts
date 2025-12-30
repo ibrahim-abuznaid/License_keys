@@ -74,7 +74,7 @@ export async function POST(
         managePiecesEnabled: trialKey.managePiecesEnabled,
         manageTemplatesEnabled: trialKey.manageTemplatesEnabled,
         apiKeysEnabled: trialKey.apiKeysEnabled,
-        customDomainsEnabled: trialKey.customDomainsEnabled,
+        customDomainsEnabled: false, // Always false
         projectRolesEnabled: trialKey.projectRolesEnabled,
         flowIssuesEnabled: trialKey.flowIssuesEnabled,
         alertsEnabled: trialKey.alertsEnabled,
