@@ -31,16 +31,12 @@ function getEnabledFeaturesList(key: LicenseKey): string {
   if (key.apiKeysEnabled) features.push('API Keys');
   if (key.customDomainsEnabled) features.push('Custom Domains');
   if (key.projectRolesEnabled) features.push('Project Roles');
-  if (key.flowIssuesEnabled) features.push('Flow Issues');
   if (key.alertsEnabled) features.push('Alerts');
   if (key.analyticsEnabled) features.push('Analytics');
   if (key.globalConnectionsEnabled) features.push('Global Connections');
   if (key.customRolesEnabled) features.push('Custom Roles');
   if (key.environmentsEnabled) features.push('Environments');
-  if (key.agentsEnabled) features.push('Agents');
   if (key.tablesEnabled) features.push('Tables');
-  if (key.todosEnabled) features.push('Todos');
-  if (key.mcpsEnabled) features.push('MCPs');
   
   return features.length > 0 ? features.join(', ') : 'None';
 }

@@ -24,16 +24,12 @@ const FEATURE_LABELS: Record<LicenseKeyFeature, string> = {
   apiKeysEnabled: 'API Keys',
   customDomainsEnabled: 'Custom Domains',
   projectRolesEnabled: 'Project Roles',
-  flowIssuesEnabled: 'Flow Issues',
   alertsEnabled: 'Alerts',
   analyticsEnabled: 'Analytics',
   globalConnectionsEnabled: 'Global Connections',
   customRolesEnabled: 'Custom Roles',
   environmentsEnabled: 'Environments',
-  agentsEnabled: 'Agents',
   tablesEnabled: 'Tables',
-  todosEnabled: 'Todos',
-  mcpsEnabled: 'MCPs',
 };
 
 const DEFAULT_PRESET: FeaturePreset = 'business';

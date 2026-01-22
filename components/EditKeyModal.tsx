@@ -36,16 +36,12 @@ export function EditKeyModal({ isOpen, onClose, onSave, licenseKey }: EditKeyMod
     apiKeysEnabled: true,
     customDomainsEnabled: false,
     projectRolesEnabled: true,
-    flowIssuesEnabled: true,
     alertsEnabled: true,
     analyticsEnabled: true,
     globalConnectionsEnabled: true,
     customRolesEnabled: true,
     environmentsEnabled: false,
-    agentsEnabled: false,
     tablesEnabled: false,
-    todosEnabled: true,
-    mcpsEnabled: false,
   });
 
   useEffect(() => {
@@ -73,16 +69,12 @@ export function EditKeyModal({ isOpen, onClose, onSave, licenseKey }: EditKeyMod
         apiKeysEnabled: licenseKey.apiKeysEnabled,
         customDomainsEnabled: licenseKey.customDomainsEnabled,
         projectRolesEnabled: licenseKey.projectRolesEnabled,
-        flowIssuesEnabled: licenseKey.flowIssuesEnabled,
         alertsEnabled: licenseKey.alertsEnabled,
         analyticsEnabled: licenseKey.analyticsEnabled,
         globalConnectionsEnabled: licenseKey.globalConnectionsEnabled,
         customRolesEnabled: licenseKey.customRolesEnabled,
         environmentsEnabled: licenseKey.environmentsEnabled,
-        agentsEnabled: licenseKey.agentsEnabled,
         tablesEnabled: licenseKey.tablesEnabled,
-        todosEnabled: licenseKey.todosEnabled,
-        mcpsEnabled: licenseKey.mcpsEnabled,
       });
     }
   }, [licenseKey, isOpen]);
@@ -113,16 +105,12 @@ export function EditKeyModal({ isOpen, onClose, onSave, licenseKey }: EditKeyMod
       apiKeysEnabled: formData.apiKeysEnabled,
       customDomainsEnabled: false, // Always false
       projectRolesEnabled: formData.projectRolesEnabled,
-      flowIssuesEnabled: formData.flowIssuesEnabled,
       alertsEnabled: formData.alertsEnabled,
       analyticsEnabled: formData.analyticsEnabled,
       globalConnectionsEnabled: formData.globalConnectionsEnabled,
       customRolesEnabled: formData.customRolesEnabled,
       environmentsEnabled: formData.environmentsEnabled,
-      agentsEnabled: formData.agentsEnabled,
       tablesEnabled: formData.tablesEnabled,
-      todosEnabled: formData.todosEnabled,
-      mcpsEnabled: formData.mcpsEnabled,
     };
 
     onSave(updatedData);
@@ -143,16 +131,12 @@ export function EditKeyModal({ isOpen, onClose, onSave, licenseKey }: EditKeyMod
       apiKeysEnabled: enabled,
       customDomainsEnabled: false, // Always false
       projectRolesEnabled: enabled,
-      flowIssuesEnabled: enabled,
       alertsEnabled: enabled,
       analyticsEnabled: enabled,
       globalConnectionsEnabled: enabled,
       customRolesEnabled: enabled,
       environmentsEnabled: enabled,
-      agentsEnabled: enabled,
       tablesEnabled: enabled,
-      todosEnabled: enabled,
-      mcpsEnabled: enabled,
     }));
   };
 
@@ -442,15 +426,6 @@ export function EditKeyModal({ isOpen, onClose, onSave, licenseKey }: EditKeyMod
             <label className="flex items-center space-x-2 cursor-pointer">
               <input
                 type="checkbox"
-                checked={formData.flowIssuesEnabled}
-                onChange={(e) => setFormData(prev => ({ ...prev, flowIssuesEnabled: e.target.checked }))}
-                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-              />
-              <span className="text-sm text-gray-700">Flow Issues</span>
-            </label>
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="checkbox"
                 checked={formData.alertsEnabled}
                 onChange={(e) => setFormData(prev => ({ ...prev, alertsEnabled: e.target.checked }))}
                 className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
@@ -496,38 +471,11 @@ export function EditKeyModal({ isOpen, onClose, onSave, licenseKey }: EditKeyMod
             <label className="flex items-center space-x-2 cursor-pointer">
               <input
                 type="checkbox"
-                checked={formData.agentsEnabled}
-                onChange={(e) => setFormData(prev => ({ ...prev, agentsEnabled: e.target.checked }))}
-                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-              />
-              <span className="text-sm text-gray-700">Agents</span>
-            </label>
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="checkbox"
                 checked={formData.tablesEnabled}
                 onChange={(e) => setFormData(prev => ({ ...prev, tablesEnabled: e.target.checked }))}
                 className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
               />
               <span className="text-sm text-gray-700">Tables</span>
-            </label>
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.todosEnabled}
-                onChange={(e) => setFormData(prev => ({ ...prev, todosEnabled: e.target.checked }))}
-                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-              />
-              <span className="text-sm text-gray-700">Todos</span>
-            </label>
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.mcpsEnabled}
-                onChange={(e) => setFormData(prev => ({ ...prev, mcpsEnabled: e.target.checked }))}
-                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-              />
-              <span className="text-sm text-gray-700">MCPs</span>
             </label>
           </div>
         </div>

@@ -41,19 +41,13 @@ export async function PUT(
     if (body.apiKeysEnabled !== undefined) updateData.apiKeysEnabled = body.apiKeysEnabled;
     if (body.customDomainsEnabled !== undefined) updateData.customDomainsEnabled = body.customDomainsEnabled;
     if (body.projectRolesEnabled !== undefined) updateData.projectRolesEnabled = body.projectRolesEnabled;
-    if (body.flowIssuesEnabled !== undefined) updateData.flowIssuesEnabled = body.flowIssuesEnabled;
     if (body.alertsEnabled !== undefined) updateData.alertsEnabled = body.alertsEnabled;
     if (body.analyticsEnabled !== undefined) updateData.analyticsEnabled = body.analyticsEnabled;
     if (body.globalConnectionsEnabled !== undefined) updateData.globalConnectionsEnabled = body.globalConnectionsEnabled;
     if (body.customRolesEnabled !== undefined) updateData.customRolesEnabled = body.customRolesEnabled;
     if (body.environmentsEnabled !== undefined) updateData.environmentsEnabled = body.environmentsEnabled;
-    if (body.agentsEnabled !== undefined) updateData.agentsEnabled = body.agentsEnabled;
     if (body.tablesEnabled !== undefined) updateData.tablesEnabled = body.tablesEnabled;
-    if (body.todosEnabled !== undefined) updateData.todosEnabled = body.todosEnabled;
-    if (body.mcpsEnabled !== undefined) updateData.mcpsEnabled = body.mcpsEnabled;
     
-    // Premium pieces (array)
-    if (body.premiumPieces !== undefined) updateData.premiumPieces = body.premiumPieces;
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(

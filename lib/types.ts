@@ -18,9 +18,7 @@ export interface LicenseKey {
   apiKeysEnabled: boolean;
   customDomainsEnabled: boolean;
   projectRolesEnabled: boolean;
-  flowIssuesEnabled: boolean;
   alertsEnabled: boolean;
-  premiumPieces: string[];
   companyName: string | null;
   goal: string | null;
   analyticsEnabled: boolean;
@@ -32,10 +30,7 @@ export interface LicenseKey {
   isTrial: boolean | null;
   fullName: string | null;
   numberOfEmployees: string | null;
-  agentsEnabled: boolean;
   tablesEnabled: boolean;
-  todosEnabled: boolean;
-  mcpsEnabled: boolean;
   activeFlows: number | null;
 }
 
@@ -52,16 +47,12 @@ export const LICENSE_KEY_FEATURES = [
   'apiKeysEnabled',
   'customDomainsEnabled',
   'projectRolesEnabled',
-  'flowIssuesEnabled',
   'alertsEnabled',
   'analyticsEnabled',
   'globalConnectionsEnabled',
   'customRolesEnabled',
   'environmentsEnabled',
-  'agentsEnabled',
   'tablesEnabled',
-  'todosEnabled',
-  'mcpsEnabled',
 ] as const;
 
 export type LicenseKeyFeature = typeof LICENSE_KEY_FEATURES[number];
@@ -114,16 +105,12 @@ export const FEATURE_PRESETS: Record<FeaturePreset, Partial<LicenseKey>> = {
     apiKeysEnabled: true,
     customDomainsEnabled: false,
     projectRolesEnabled: false,
-    flowIssuesEnabled: true,
     alertsEnabled: true,
     analyticsEnabled: true,
     globalConnectionsEnabled: false,
     customRolesEnabled: false,
     environmentsEnabled: false,
-    agentsEnabled: false,
     tablesEnabled: false,
-    todosEnabled: true,
-    mcpsEnabled: false,
   },
   business: {
     ssoEnabled: true,
@@ -138,16 +125,12 @@ export const FEATURE_PRESETS: Record<FeaturePreset, Partial<LicenseKey>> = {
     apiKeysEnabled: true,
     customDomainsEnabled: false,
     projectRolesEnabled: true,
-    flowIssuesEnabled: true,
     alertsEnabled: true,
     analyticsEnabled: true,
     globalConnectionsEnabled: true,
     customRolesEnabled: false,
     environmentsEnabled: false,
-    agentsEnabled: false,
     tablesEnabled: true,
-    todosEnabled: true,
-    mcpsEnabled: false,
   },
   enterprise: {
     ssoEnabled: true,
@@ -162,16 +145,12 @@ export const FEATURE_PRESETS: Record<FeaturePreset, Partial<LicenseKey>> = {
     apiKeysEnabled: true,
     customDomainsEnabled: false,
     projectRolesEnabled: true,
-    flowIssuesEnabled: true,
     alertsEnabled: true,
     analyticsEnabled: true,
     globalConnectionsEnabled: true,
     customRolesEnabled: true,
     environmentsEnabled: true,
-    agentsEnabled: true,
     tablesEnabled: true,
-    todosEnabled: true,
-    mcpsEnabled: true,
   },
   all: {
     ssoEnabled: true,
@@ -186,16 +165,12 @@ export const FEATURE_PRESETS: Record<FeaturePreset, Partial<LicenseKey>> = {
     apiKeysEnabled: true,
     customDomainsEnabled: false,
     projectRolesEnabled: true,
-    flowIssuesEnabled: true,
     alertsEnabled: true,
     analyticsEnabled: true,
     globalConnectionsEnabled: true,
     customRolesEnabled: true,
     environmentsEnabled: true,
-    agentsEnabled: true,
     tablesEnabled: true,
-    todosEnabled: true,
-    mcpsEnabled: true,
   },
 };
 

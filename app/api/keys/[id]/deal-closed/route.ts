@@ -76,17 +76,12 @@ export async function POST(
         apiKeysEnabled: trialKey.apiKeysEnabled,
         customDomainsEnabled: false, // Always false
         projectRolesEnabled: trialKey.projectRolesEnabled,
-        flowIssuesEnabled: trialKey.flowIssuesEnabled,
         alertsEnabled: trialKey.alertsEnabled,
         analyticsEnabled: trialKey.analyticsEnabled,
         globalConnectionsEnabled: trialKey.globalConnectionsEnabled,
         customRolesEnabled: trialKey.customRolesEnabled,
         environmentsEnabled: trialKey.environmentsEnabled,
-        agentsEnabled: trialKey.agentsEnabled,
         tablesEnabled: trialKey.tablesEnabled,
-        todosEnabled: trialKey.todosEnabled,
-        mcpsEnabled: trialKey.mcpsEnabled,
-        premiumPieces: trialKey.premiumPieces,
       })
       .select()
       .single();

@@ -312,16 +312,12 @@ export default function UserDetailPage() {
       key.apiKeysEnabled && 'API Keys',
       key.customDomainsEnabled && 'Custom Domains',
       key.projectRolesEnabled && 'Project Roles',
-      key.flowIssuesEnabled && 'Flow Issues',
       key.alertsEnabled && 'Alerts',
       key.analyticsEnabled && 'Analytics',
       key.globalConnectionsEnabled && 'Global Connections',
       key.customRolesEnabled && 'Custom Roles',
       key.environmentsEnabled && 'Environments',
-      key.agentsEnabled && 'Agents',
       key.tablesEnabled && 'Tables',
-      key.todosEnabled && 'Todos',
-      key.mcpsEnabled && 'MCPs',
     ].filter(Boolean);
     
     return features.length;
