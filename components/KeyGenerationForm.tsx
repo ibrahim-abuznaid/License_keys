@@ -30,8 +30,11 @@ const FEATURE_LABELS: Record<LicenseKeyFeature, string> = {
   customRolesEnabled: 'Custom Roles',
   environmentsEnabled: 'Environments',
   tablesEnabled: 'Tables',
+  eventStreamingEnabled: 'Event Streaming',
+  agentsEnabled: 'Agents',
+  flowIssuesEnabled: 'Flow Issues',
+  secretManagersEnabled: 'Secret Managers',
   scimEnabled: 'SCIM',
-  secretManagerEnabled: 'Secret Manager',
 };
 
 const DEFAULT_PRESET: FeaturePreset = 'business';

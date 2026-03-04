@@ -31,8 +31,11 @@ export interface LicenseKey {
   fullName: string | null;
   numberOfEmployees: string | null;
   tablesEnabled: boolean;
+  eventStreamingEnabled: boolean;
+  agentsEnabled: boolean;
+  flowIssuesEnabled: boolean;
+  secretManagersEnabled: boolean;
   scimEnabled: boolean;
-  secretManagerEnabled: boolean;
   activeFlows: number | null;
 }
 
@@ -55,8 +58,11 @@ export const LICENSE_KEY_FEATURES = [
   'customRolesEnabled',
   'environmentsEnabled',
   'tablesEnabled',
+  'eventStreamingEnabled',
+  'agentsEnabled',
+  'flowIssuesEnabled',
+  'secretManagersEnabled',
   'scimEnabled',
-  'secretManagerEnabled',
 ] as const;
 
 export type LicenseKeyFeature = typeof LICENSE_KEY_FEATURES[number];
@@ -115,8 +121,11 @@ export const FEATURE_PRESETS: Record<FeaturePreset, Partial<LicenseKey>> = {
     customRolesEnabled: false,
     environmentsEnabled: false,
     tablesEnabled: false,
+    eventStreamingEnabled: true,
+    agentsEnabled: false,
+    flowIssuesEnabled: true,
+    secretManagersEnabled: false,
     scimEnabled: false,
-    secretManagerEnabled: false,
   },
   business: {
     ssoEnabled: true,
@@ -137,8 +146,11 @@ export const FEATURE_PRESETS: Record<FeaturePreset, Partial<LicenseKey>> = {
     customRolesEnabled: false,
     environmentsEnabled: false,
     tablesEnabled: true,
+    eventStreamingEnabled: true,
+    agentsEnabled: false,
+    flowIssuesEnabled: true,
+    secretManagersEnabled: false,
     scimEnabled: false,
-    secretManagerEnabled: false,
   },
   enterprise: {
     ssoEnabled: true,
@@ -159,8 +171,11 @@ export const FEATURE_PRESETS: Record<FeaturePreset, Partial<LicenseKey>> = {
     customRolesEnabled: true,
     environmentsEnabled: true,
     tablesEnabled: true,
+    eventStreamingEnabled: true,
+    agentsEnabled: true,
+    flowIssuesEnabled: true,
+    secretManagersEnabled: true,
     scimEnabled: true,
-    secretManagerEnabled: true,
   },
   all: {
     ssoEnabled: true,
@@ -181,8 +196,11 @@ export const FEATURE_PRESETS: Record<FeaturePreset, Partial<LicenseKey>> = {
     customRolesEnabled: true,
     environmentsEnabled: true,
     tablesEnabled: true,
+    eventStreamingEnabled: true,
+    agentsEnabled: true,
+    flowIssuesEnabled: true,
+    secretManagersEnabled: true,
     scimEnabled: true,
-    secretManagerEnabled: true,
   },
 };
 

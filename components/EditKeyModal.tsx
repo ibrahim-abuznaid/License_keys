@@ -42,8 +42,11 @@ export function EditKeyModal({ isOpen, onClose, onSave, licenseKey }: EditKeyMod
     customRolesEnabled: true,
     environmentsEnabled: false,
     tablesEnabled: false,
+    eventStreamingEnabled: true,
+    agentsEnabled: false,
+    flowIssuesEnabled: true,
+    secretManagersEnabled: false,
     scimEnabled: false,
-    secretManagerEnabled: false,
   });
 
   useEffect(() => {
@@ -77,8 +80,11 @@ export function EditKeyModal({ isOpen, onClose, onSave, licenseKey }: EditKeyMod
         customRolesEnabled: licenseKey.customRolesEnabled,
         environmentsEnabled: licenseKey.environmentsEnabled,
         tablesEnabled: licenseKey.tablesEnabled,
+        eventStreamingEnabled: licenseKey.eventStreamingEnabled,
+        agentsEnabled: licenseKey.agentsEnabled,
+        flowIssuesEnabled: licenseKey.flowIssuesEnabled,
+        secretManagersEnabled: licenseKey.secretManagersEnabled,
         scimEnabled: licenseKey.scimEnabled,
-        secretManagerEnabled: licenseKey.secretManagerEnabled,
       });
     }
   }, [licenseKey, isOpen]);
@@ -115,8 +121,11 @@ export function EditKeyModal({ isOpen, onClose, onSave, licenseKey }: EditKeyMod
       customRolesEnabled: formData.customRolesEnabled,
       environmentsEnabled: formData.environmentsEnabled,
       tablesEnabled: formData.tablesEnabled,
+      eventStreamingEnabled: formData.eventStreamingEnabled,
+      agentsEnabled: formData.agentsEnabled,
+      flowIssuesEnabled: formData.flowIssuesEnabled,
+      secretManagersEnabled: formData.secretManagersEnabled,
       scimEnabled: formData.scimEnabled,
-      secretManagerEnabled: formData.secretManagerEnabled,
     };
 
     onSave(updatedData);
@@ -143,8 +152,11 @@ export function EditKeyModal({ isOpen, onClose, onSave, licenseKey }: EditKeyMod
       customRolesEnabled: enabled,
       environmentsEnabled: enabled,
       tablesEnabled: enabled,
+      eventStreamingEnabled: enabled,
+      agentsEnabled: enabled,
+      flowIssuesEnabled: enabled,
+      secretManagersEnabled: enabled,
       scimEnabled: enabled,
-      secretManagerEnabled: enabled,
     }));
   };
 
@@ -488,20 +500,47 @@ export function EditKeyModal({ isOpen, onClose, onSave, licenseKey }: EditKeyMod
             <label className="flex items-center space-x-2 cursor-pointer">
               <input
                 type="checkbox"
+                checked={formData.eventStreamingEnabled}
+                onChange={(e) => setFormData(prev => ({ ...prev, eventStreamingEnabled: e.target.checked }))}
+                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+              />
+              <span className="text-sm text-gray-700">Event Streaming</span>
+            </label>
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.agentsEnabled}
+                onChange={(e) => setFormData(prev => ({ ...prev, agentsEnabled: e.target.checked }))}
+                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+              />
+              <span className="text-sm text-gray-700">Agents</span>
+            </label>
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.flowIssuesEnabled}
+                onChange={(e) => setFormData(prev => ({ ...prev, flowIssuesEnabled: e.target.checked }))}
+                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+              />
+              <span className="text-sm text-gray-700">Flow Issues</span>
+            </label>
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.secretManagersEnabled}
+                onChange={(e) => setFormData(prev => ({ ...prev, secretManagersEnabled: e.target.checked }))}
+                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+              />
+              <span className="text-sm text-gray-700">Secret Managers</span>
+            </label>
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
                 checked={formData.scimEnabled}
                 onChange={(e) => setFormData(prev => ({ ...prev, scimEnabled: e.target.checked }))}
                 className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
               />
               <span className="text-sm text-gray-700">SCIM</span>
-            </label>
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.secretManagerEnabled}
-                onChange={(e) => setFormData(prev => ({ ...prev, secretManagerEnabled: e.target.checked }))}
-                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-              />
-              <span className="text-sm text-gray-700">Secret Manager</span>
             </label>
           </div>
         </div>

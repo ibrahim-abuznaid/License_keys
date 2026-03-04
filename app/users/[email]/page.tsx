@@ -318,8 +318,11 @@ export default function UserDetailPage() {
       key.customRolesEnabled && 'Custom Roles',
       key.environmentsEnabled && 'Environments',
       key.tablesEnabled && 'Tables',
+      key.eventStreamingEnabled && 'Event Streaming',
+      key.agentsEnabled && 'Agents',
+      key.flowIssuesEnabled && 'Flow Issues',
+      key.secretManagersEnabled && 'Secret Managers',
       key.scimEnabled && 'SCIM',
-      key.secretManagerEnabled && 'Secret Manager',
     ].filter(Boolean);
     
     return features.length;

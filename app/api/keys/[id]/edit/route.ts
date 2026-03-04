@@ -47,8 +47,11 @@ export async function PUT(
     if (body.customRolesEnabled !== undefined) updateData.customRolesEnabled = body.customRolesEnabled;
     if (body.environmentsEnabled !== undefined) updateData.environmentsEnabled = body.environmentsEnabled;
     if (body.tablesEnabled !== undefined) updateData.tablesEnabled = body.tablesEnabled;
+    if (body.eventStreamingEnabled !== undefined) updateData.eventStreamingEnabled = body.eventStreamingEnabled;
+    if (body.agentsEnabled !== undefined) updateData.agentsEnabled = body.agentsEnabled;
+    if (body.flowIssuesEnabled !== undefined) updateData.flowIssuesEnabled = body.flowIssuesEnabled;
+    if (body.secretManagersEnabled !== undefined) updateData.secretManagersEnabled = body.secretManagersEnabled;
     if (body.scimEnabled !== undefined) updateData.scimEnabled = body.scimEnabled;
-    if (body.secretManagerEnabled !== undefined) updateData.secretManagerEnabled = body.secretManagerEnabled;
     
 
     if (Object.keys(updateData).length === 0) {
