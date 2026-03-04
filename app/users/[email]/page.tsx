@@ -318,6 +318,8 @@ export default function UserDetailPage() {
       key.customRolesEnabled && 'Custom Roles',
       key.environmentsEnabled && 'Environments',
       key.tablesEnabled && 'Tables',
+      key.scimEnabled && 'SCIM',
+      key.secretManagerEnabled && 'Secret Manager',
     ].filter(Boolean);
     
     return features.length;

@@ -180,6 +180,8 @@ function getEnabledFeaturesList(key: LicenseKey): string {
   if (key.customRolesEnabled) features.push('Custom Roles');
   if (key.environmentsEnabled) features.push('Environments');
   if (key.tablesEnabled) features.push('Tables');
+  if (key.scimEnabled) features.push('SCIM');
+  if (key.secretManagerEnabled) features.push('Secret Manager');
   
   return features.length > 0 ? features.join(', ') : 'None';
 }

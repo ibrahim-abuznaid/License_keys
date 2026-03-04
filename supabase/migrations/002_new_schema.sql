@@ -44,6 +44,8 @@ CREATE TABLE public.license_keys (
   "numberOfEmployees" TEXT NULL,
   "agentsEnabled" BOOLEAN NULL DEFAULT FALSE,
   "tablesEnabled" BOOLEAN NULL DEFAULT FALSE,
+  "scimEnabled" BOOLEAN NULL DEFAULT FALSE,
+  "secretManagerEnabled" BOOLEAN NULL DEFAULT FALSE,
   "todosEnabled" BOOLEAN NULL DEFAULT TRUE,
   "mcpsEnabled" BOOLEAN NULL DEFAULT FALSE,
   "activeFlows" INTEGER NULL,

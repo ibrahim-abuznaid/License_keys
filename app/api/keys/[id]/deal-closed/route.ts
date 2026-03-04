@@ -82,6 +82,8 @@ export async function POST(
         customRolesEnabled: trialKey.customRolesEnabled,
         environmentsEnabled: trialKey.environmentsEnabled,
         tablesEnabled: trialKey.tablesEnabled,
+        scimEnabled: trialKey.scimEnabled,
+        secretManagerEnabled: trialKey.secretManagerEnabled,
       })
       .select()
       .single();

@@ -30,6 +30,8 @@ const FEATURE_LABELS: Record<LicenseKeyFeature, string> = {
   customRolesEnabled: 'Custom Roles',
   environmentsEnabled: 'Environments',
   tablesEnabled: 'Tables',
+  scimEnabled: 'SCIM',
+  secretManagerEnabled: 'Secret Manager',
 };
 
 const DEFAULT_PRESET: FeaturePreset = 'business';

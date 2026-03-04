@@ -47,6 +47,8 @@ export async function PUT(
     if (body.customRolesEnabled !== undefined) updateData.customRolesEnabled = body.customRolesEnabled;
     if (body.environmentsEnabled !== undefined) updateData.environmentsEnabled = body.environmentsEnabled;
     if (body.tablesEnabled !== undefined) updateData.tablesEnabled = body.tablesEnabled;
+    if (body.scimEnabled !== undefined) updateData.scimEnabled = body.scimEnabled;
+    if (body.secretManagerEnabled !== undefined) updateData.secretManagerEnabled = body.secretManagerEnabled;
     
 
     if (Object.keys(updateData).length === 0) {

@@ -31,6 +31,8 @@ export interface LicenseKey {
   fullName: string | null;
   numberOfEmployees: string | null;
   tablesEnabled: boolean;
+  scimEnabled: boolean;
+  secretManagerEnabled: boolean;
   activeFlows: number | null;
 }
 
@@ -53,6 +55,8 @@ export const LICENSE_KEY_FEATURES = [
   'customRolesEnabled',
   'environmentsEnabled',
   'tablesEnabled',
+  'scimEnabled',
+  'secretManagerEnabled',
 ] as const;
 
 export type LicenseKeyFeature = typeof LICENSE_KEY_FEATURES[number];
@@ -111,6 +115,8 @@ export const FEATURE_PRESETS: Record<FeaturePreset, Partial<LicenseKey>> = {
     customRolesEnabled: false,
     environmentsEnabled: false,
     tablesEnabled: false,
+    scimEnabled: false,
+    secretManagerEnabled: false,
   },
   business: {
     ssoEnabled: true,
@@ -131,6 +137,8 @@ export const FEATURE_PRESETS: Record<FeaturePreset, Partial<LicenseKey>> = {
     customRolesEnabled: false,
     environmentsEnabled: false,
     tablesEnabled: true,
+    scimEnabled: false,
+    secretManagerEnabled: false,
   },
   enterprise: {
     ssoEnabled: true,
@@ -151,6 +159,8 @@ export const FEATURE_PRESETS: Record<FeaturePreset, Partial<LicenseKey>> = {
     customRolesEnabled: true,
     environmentsEnabled: true,
     tablesEnabled: true,
+    scimEnabled: true,
+    secretManagerEnabled: true,
   },
   all: {
     ssoEnabled: true,
@@ -171,6 +181,8 @@ export const FEATURE_PRESETS: Record<FeaturePreset, Partial<LicenseKey>> = {
     customRolesEnabled: true,
     environmentsEnabled: true,
     tablesEnabled: true,
+    scimEnabled: true,
+    secretManagerEnabled: true,
   },
 };
 
