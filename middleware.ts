@@ -4,10 +4,12 @@ import { checkAuthMiddleware } from '@/lib/auth';
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow access to login page and auth API routes
+  // Allow access to login page, auth API routes, and external API routes
+  // External API routes handle their own authentication via Bearer token
   if (
     pathname === '/login' ||
-    pathname.startsWith('/api/auth/')
+    pathname.startsWith('/api/auth/') ||
+    pathname.startsWith('/api/external/')
   ) {
     return NextResponse.next();
   }
