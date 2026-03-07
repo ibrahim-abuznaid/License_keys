@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
     const allFeaturesEnabled = Object.fromEntries(
       LICENSE_KEY_FEATURES.map((f) => [f, true])
     );
+    allFeaturesEnabled.customDomainsEnabled = false;
 
     const { data, error } = await supabaseAdmin
       .from(LICENSE_KEYS_TABLE)
