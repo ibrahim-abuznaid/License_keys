@@ -99,7 +99,7 @@ export function getKeyStatus(key: LicenseKey): KeyStatus {
 }
 
 // Feature presets for convenience
-export type FeaturePreset = 'minimal' | 'business' | 'enterprise' | 'all';
+export type FeaturePreset = 'minimal' | 'business' | 'enterprise' | 'all' | 'embed';
 
 export const FEATURE_PRESETS: Record<FeaturePreset, Partial<LicenseKey>> = {
   minimal: {
@@ -201,6 +201,31 @@ export const FEATURE_PRESETS: Record<FeaturePreset, Partial<LicenseKey>> = {
     flowIssuesEnabled: true,
     secretManagersEnabled: true,
     scimEnabled: true,
+  },
+  embed: {
+    ssoEnabled: false,
+    gitSyncEnabled: false,
+    showPoweredBy: true,
+    embeddingEnabled: true,
+    auditLogEnabled: false,
+    customAppearanceEnabled: true,
+    manageProjectsEnabled: true,
+    managePiecesEnabled: true,
+    manageTemplatesEnabled: true,
+    apiKeysEnabled: true,
+    customDomainsEnabled: false,
+    projectRolesEnabled: false,
+    alertsEnabled: true,
+    analyticsEnabled: true,
+    globalConnectionsEnabled: true,
+    customRolesEnabled: false,
+    environmentsEnabled: false,
+    tablesEnabled: true,
+    eventStreamingEnabled: false,
+    agentsEnabled: true,
+    flowIssuesEnabled: true,
+    secretManagersEnabled: false,
+    scimEnabled: false,
   },
 };
 

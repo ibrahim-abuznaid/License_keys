@@ -445,7 +445,7 @@ export default function KeyGenerationForm({ onSuccess, redirectToSubscriber = fa
           Feature Preset *
         </label>
         <div className="flex flex-wrap gap-2">
-          {(['minimal', 'business', 'enterprise', 'all'] as FeaturePreset[]).map((preset) => (
+          {(['minimal', 'business', 'enterprise', 'all', 'embed'] as FeaturePreset[]).map((preset) => (
             <button
               key={preset}
               type="button"
