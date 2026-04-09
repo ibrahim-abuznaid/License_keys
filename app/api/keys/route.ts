@@ -3,7 +3,8 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { generateLicenseKey } from '@/lib/key-generator';
 import { CreateLicenseKeyInput, FEATURE_PRESETS, LICENSE_KEY_FEATURES, LicenseKeyFeature } from '@/lib/types';
 import { sendTrialKeyEmail } from '@/lib/email-service';
-import { KEY_HISTORY_TABLE, LICENSE_KEYS_TABLE } from '@/lib/config';
+import { sendSlackNotification } from '@/lib/slack-service';
+import { KEY_HISTORY_TABLE, LICENSE_KEYS_TABLE, SUBSCRIBER_SETTINGS_TABLE } from '@/lib/config';
 
 // Disable caching for this route
 export const dynamic = 'force-dynamic';
@@ -62,7 +63,8 @@ export async function POST(request: NextRequest) {
       goal, 
       notes, 
       preset = 'business',
-      activeFlows 
+      activeFlows,
+      slackChannelId,
     } = body;
 
     // Validate input
@@ -112,7 +114,7 @@ export async function POST(request: NextRequest) {
         key: licenseKey,
         email,
         expiresAt,
-        activatedAt: new Date().toISOString(), // Set activation time when key is created
+        activatedAt: new Date().toISOString(),
         isTrial,
         keyType,
         fullName,
@@ -141,6 +143,21 @@ export async function POST(request: NextRequest) {
         keyType 
       },
     });
+
+    if (slackChannelId !== undefined) {
+      await supabaseAdmin
+        .from(SUBSCRIBER_SETTINGS_TABLE)
+        .upsert(
+          { email, slackChannelId: slackChannelId || null, updated_at: new Date().toISOString() },
+          { onConflict: 'email' },
+        );
+    }
+
+    if (isTrial && data) {
+      sendSlackNotification({ licenseKey: data, templateId: 'trial_started' }).catch(
+        (err) => console.error('Failed to send trial_started Slack notification:', err),
+      );
+    }
 
     return NextResponse.json({ data });
   } catch (error: any) {

@@ -61,8 +61,9 @@ export default function KeyGenerationForm({ onSuccess, redirectToSubscriber = fa
     goal: '',
     notes: '',
     activeFlows: '',
+    slackChannelId: '',
     preset: DEFAULT_PRESET,
-    isSubscribed: false, // If true, valid_days is ignored and expiresAt will be null
+    isSubscribed: false,
   });
   const [features, setFeatures] = useState<Record<LicenseKeyFeature, boolean>>(() => buildFeatureState(DEFAULT_PRESET));
   const [sendEmail, setSendEmail] = useState(true);
@@ -136,6 +137,7 @@ export default function KeyGenerationForm({ onSuccess, redirectToSubscriber = fa
         goal: formData.goal || undefined,
         notes: formData.notes || undefined,
         activeFlows: formData.activeFlows ? parseInt(formData.activeFlows) : undefined,
+        slackChannelId: formData.slackChannelId || undefined,
         preset: formData.preset,
         ...features,
         customDomainsEnabled: false, // Always false
@@ -174,6 +176,7 @@ export default function KeyGenerationForm({ onSuccess, redirectToSubscriber = fa
         goal: '',
         notes: '',
         activeFlows: '',
+        slackChannelId: '',
         preset: DEFAULT_PRESET,
         isSubscribed: false,
       });
@@ -392,6 +395,24 @@ export default function KeyGenerationForm({ onSuccess, redirectToSubscriber = fa
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           placeholder="e.g., Automate customer onboarding"
         />
+      </div>
+
+      {/* Slack Channel ID */}
+      <div className="mb-4">
+        <label htmlFor="slackChannelId" className="block text-sm font-medium text-gray-700 mb-2">
+          Slack Channel ID
+        </label>
+        <input
+          type="text"
+          id="slackChannelId"
+          value={formData.slackChannelId}
+          onChange={(e) => setFormData({ ...formData, slackChannelId: e.target.value })}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          placeholder="e.g., C01ABCDEF23"
+        />
+        <p className="mt-1 text-xs text-gray-500">
+          Optional. Slack channel for trial notifications about this subscriber.
+        </p>
       </div>
 
       {/* Key Type: Trial or Subscribed */}

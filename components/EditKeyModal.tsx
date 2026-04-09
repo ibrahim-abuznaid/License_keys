@@ -23,6 +23,7 @@ export function EditKeyModal({ isOpen, onClose, onSave, licenseKey }: EditKeyMod
     numberOfEmployees: '',
     goal: '',
     notes: '',
+    slackChannelId: '',
     // Feature flags
     ssoEnabled: true,
     gitSyncEnabled: true,
@@ -62,6 +63,7 @@ export function EditKeyModal({ isOpen, onClose, onSave, licenseKey }: EditKeyMod
         numberOfEmployees: licenseKey.numberOfEmployees || '',
         goal: licenseKey.goal || '',
         notes: licenseKey.notes || '',
+        slackChannelId: '',
         ssoEnabled: licenseKey.ssoEnabled,
         gitSyncEnabled: licenseKey.gitSyncEnabled,
         showPoweredBy: licenseKey.showPoweredBy,
@@ -86,6 +88,15 @@ export function EditKeyModal({ isOpen, onClose, onSave, licenseKey }: EditKeyMod
         secretManagersEnabled: licenseKey.secretManagersEnabled,
         scimEnabled: licenseKey.scimEnabled,
       });
+
+      fetch(`/api/subscribers/${encodeURIComponent(licenseKey.email)}/settings`)
+        .then((res) => res.ok ? res.json() : null)
+        .then((result) => {
+          if (result?.data?.slackChannelId) {
+            setFormData((prev) => ({ ...prev, slackChannelId: result.data.slackChannelId }));
+          }
+        })
+        .catch(() => {});
     }
   }, [licenseKey, isOpen]);
 
@@ -103,6 +114,7 @@ export function EditKeyModal({ isOpen, onClose, onSave, licenseKey }: EditKeyMod
       numberOfEmployees: formData.numberOfEmployees || null,
       goal: formData.goal || null,
       notes: formData.notes || null,
+      slackChannelId: formData.slackChannelId || null,
       ssoEnabled: formData.ssoEnabled,
       gitSyncEnabled: formData.gitSyncEnabled,
       showPoweredBy: formData.showPoweredBy,
@@ -259,6 +271,23 @@ export function EditKeyModal({ isOpen, onClose, onSave, licenseKey }: EditKeyMod
             onChange={(e) => setFormData(prev => ({ ...prev, goal: e.target.value }))}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           />
+        </div>
+
+        {/* Slack Channel ID */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Slack Channel ID
+          </label>
+          <input
+            type="text"
+            value={formData.slackChannelId}
+            onChange={(e) => setFormData(prev => ({ ...prev, slackChannelId: e.target.value }))}
+            placeholder="e.g., C01ABCDEF23"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            Slack channel for trial notifications about this subscriber.
+          </p>
         </div>
 
         {/* Key Type & Trial Status */}

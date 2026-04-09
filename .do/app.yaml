@@ -55,6 +55,12 @@ services:
         value: "${APP_URL}"
       - key: FROM_EMAIL
         value: "noreply@yourdomain.com"
+      - key: SLACK_WEBHOOK_URL
+        value: "${SLACK_WEBHOOK_URL}"
+        type: SECRET
+      - key: API_SECRET_KEY
+        value: "${API_SECRET_KEY}"
+        type: SECRET
 
 # Ingress configuration (handles routing and SSL)
 ingress:
