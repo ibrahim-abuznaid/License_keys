@@ -12,3 +12,5 @@ export const NOTIFICATION_TEMPLATES_TABLE = 'notification_templates';
 
 export const SUBSCRIBER_SETTINGS_TABLE = 'subscriber_settings';
 
+export const CRON_RUN_LOGS_TABLE = 'cron_run_logs';
+

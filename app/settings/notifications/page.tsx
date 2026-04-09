@@ -43,7 +43,64 @@ function getTriggerLabel(template: NotificationTemplate): string {
   return '';
 }
 
+interface CronRunLog {
+  id: string;
+  ran_at: string;
+  trial_keys_processed: number;
+  notifications_sent: number;
+  schedule_templates_count: number;
+  results: Array<{ key: string; templateId: string; success: boolean }>;
+  error: string | null;
+  duration_ms: number;
+}
+
 export default function NotificationSettingsPage() {
+  const [activeTab, setActiveTab] = useState<'templates' | 'logs'>('templates');
+
+  return (
+    <div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Slack Notifications</h1>
+        <p className="mt-1 text-sm text-gray-600">
+          Manage notification templates and view schedule run logs.
+        </p>
+      </div>
+
+      {/* Tab Bar */}
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="flex gap-6" aria-label="Tabs">
+          <button
+            onClick={() => setActiveTab('templates')}
+            className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'templates'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Templates
+          </button>
+          <button
+            onClick={() => setActiveTab('logs')}
+            className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'logs'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Schedule Logs
+          </button>
+        </nav>
+      </div>
+
+      {activeTab === 'templates' && <TemplatesTab />}
+      {activeTab === 'logs' && <ScheduleLogsTab />}
+    </div>
+  );
+}
+
+/* ────────────────────────── Templates Tab ────────────────────────── */
+
+function TemplatesTab() {
   const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<Record<string, boolean>>({});
@@ -199,13 +256,7 @@ export default function NotificationSettingsPage() {
 
   return (
     <div>
-      <div className="mb-8 flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Slack Notification Templates</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Configure Slack messages sent automatically when actions happen or on a schedule relative to trial expiry.
-          </p>
-        </div>
+      <div className="mb-6 flex items-center justify-end">
         <button
           onClick={() => setShowCreateForm((v) => !v)}
           className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
@@ -226,11 +277,9 @@ export default function NotificationSettingsPage() {
         </div>
       )}
 
-      {/* Create New Notification Form */}
       {showCreateForm && (
         <div className="mb-6 bg-white rounded-lg shadow-sm border border-indigo-200 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Create New Notification</h3>
-
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Label</label>
@@ -242,7 +291,6 @@ export default function NotificationSettingsPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Trigger Type</label>
               <div className="flex gap-4">
@@ -266,7 +314,6 @@ export default function NotificationSettingsPage() {
                 </label>
               </div>
             </div>
-
             {newTemplate.trigger_type === 'action' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Action</label>
@@ -281,7 +328,6 @@ export default function NotificationSettingsPage() {
                 </select>
               </div>
             )}
-
             {newTemplate.trigger_type === 'schedule' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Days relative to expiry</label>
@@ -296,7 +342,6 @@ export default function NotificationSettingsPage() {
                 </p>
               </div>
             )}
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
               <textarea
@@ -307,7 +352,6 @@ export default function NotificationSettingsPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
-
             <div className="flex flex-wrap gap-1.5">
               {AVAILABLE_VARIABLES.map((v) => (
                 <button
@@ -321,7 +365,6 @@ export default function NotificationSettingsPage() {
                 </button>
               ))}
             </div>
-
             <div className="flex justify-end">
               <button
                 type="button"
@@ -336,7 +379,6 @@ export default function NotificationSettingsPage() {
         </div>
       )}
 
-      {/* Available Variables Reference */}
       <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
         <h3 className="text-sm font-semibold text-gray-700 mb-3">Available Variables</h3>
         <div className="flex flex-wrap gap-2">
@@ -355,7 +397,6 @@ export default function NotificationSettingsPage() {
         </p>
       </div>
 
-      {/* Template Cards */}
       <div className="space-y-4">
         {templates.map((template) => (
           <div
@@ -366,9 +407,7 @@ export default function NotificationSettingsPage() {
           >
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-3">
-                <h3 className="text-base font-semibold text-gray-900">
-                  {template.label}
-                </h3>
+                <h3 className="text-base font-semibold text-gray-900">{template.label}</h3>
                 <span className="text-xs font-mono text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
                   {template.id}
                 </span>
@@ -399,7 +438,6 @@ export default function NotificationSettingsPage() {
                 </label>
               </div>
             </div>
-
             <p className="text-xs text-gray-500 mb-3">
               {template.trigger_type === 'action' && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
@@ -412,14 +450,10 @@ export default function NotificationSettingsPage() {
                 </span>
               )}
             </p>
-
             <textarea
               value={editedMessages[template.id] || ''}
               onChange={(e) =>
-                setEditedMessages((prev) => ({
-                  ...prev,
-                  [template.id]: e.target.value,
-                }))
+                setEditedMessages((prev) => ({ ...prev, [template.id]: e.target.value }))
               }
               rows={3}
               disabled={!template.enabled}
@@ -429,7 +463,6 @@ export default function NotificationSettingsPage() {
                   : 'border-gray-200 bg-gray-100 text-gray-500'
               }`}
             />
-
             <div className="flex items-center justify-between mt-3">
               <p className="text-xs text-gray-400">
                 Last updated: {new Date(template.updated_at).toLocaleString()}
@@ -446,6 +479,194 @@ export default function NotificationSettingsPage() {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+/* ────────────────────────── Schedule Logs Tab ────────────────────────── */
+
+function ScheduleLogsTab() {
+  const [logs, setLogs] = useState<CronRunLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchLogs();
+  }, []);
+
+  const fetchLogs = async () => {
+    try {
+      const res = await fetch('/api/settings/cron-logs');
+      const result = await res.json();
+      if (res.ok) {
+        setLogs(result.data || []);
+      } else {
+        setError(result.error || 'Failed to load logs');
+      }
+    } catch {
+      setError('Failed to load schedule logs');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+        {error}
+      </div>
+    );
+  }
+
+  if (logs.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
+        <p className="text-gray-500">No schedule runs recorded yet.</p>
+        <p className="text-sm text-gray-400 mt-1">
+          Logs will appear here after the cron job runs for the first time.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm text-gray-600">Showing last {logs.length} run{logs.length !== 1 ? 's' : ''}</p>
+        <button
+          onClick={() => { setLoading(true); fetchLogs(); }}
+          className="px-3 py-1.5 text-sm text-indigo-600 hover:text-indigo-800 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition-colors"
+        >
+          Refresh
+        </button>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date / Time</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Keys</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Sent</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Templates</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {logs.map((log) => {
+              const isError = !!log.error;
+              const isExpanded = expandedId === log.id;
+              return (
+                <tr key={log.id} className={isError ? 'bg-red-50' : undefined}>
+                  <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
+                    {new Date(log.ran_at).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {isError ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                        Error
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        Success
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-700 text-right">{log.trial_keys_processed}</td>
+                  <td className="px-4 py-3 text-sm text-right">
+                    <span className={log.notifications_sent > 0 ? 'font-semibold text-indigo-700' : 'text-gray-700'}>
+                      {log.notifications_sent}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-700 text-right">{log.schedule_templates_count}</td>
+                  <td className="px-4 py-3 text-sm text-gray-500 text-right whitespace-nowrap">
+                    {log.duration_ms}ms
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {(log.results.length > 0 || log.error) && (
+                      <button
+                        onClick={() => setExpandedId(isExpanded ? null : log.id)}
+                        className="text-xs text-indigo-600 hover:text-indigo-800"
+                      >
+                        {isExpanded ? 'Hide' : 'Show'}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Expanded detail panel */}
+      {expandedId && (() => {
+        const log = logs.find((l) => l.id === expandedId);
+        if (!log) return null;
+        return (
+          <div className="mt-4 bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-semibold text-gray-900">
+                Run Details &mdash; {new Date(log.ran_at).toLocaleString()}
+              </h4>
+              <button
+                onClick={() => setExpandedId(null)}
+                className="text-xs text-gray-400 hover:text-gray-600"
+              >
+                Close
+              </button>
+            </div>
+
+            {log.error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                <span className="font-medium">Error:</span> {log.error}
+              </div>
+            )}
+
+            {log.results.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-2 pr-4 text-xs font-medium text-gray-500">License Key</th>
+                      <th className="text-left py-2 pr-4 text-xs font-medium text-gray-500">Template</th>
+                      <th className="text-left py-2 text-xs font-medium text-gray-500">Result</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {log.results.map((r, i) => (
+                      <tr key={i}>
+                        <td className="py-2 pr-4 font-mono text-xs text-gray-700">{r.key}</td>
+                        <td className="py-2 pr-4 text-xs text-gray-700">{r.templateId}</td>
+                        <td className="py-2">
+                          {r.success ? (
+                            <span className="text-xs text-green-700">Sent</span>
+                          ) : (
+                            <span className="text-xs text-red-700">Failed</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : !log.error ? (
+              <p className="text-sm text-gray-500">No notifications were triggered in this run.</p>
+            ) : null}
+          </div>
+        );
+      })()}
     </div>
   );
 }
