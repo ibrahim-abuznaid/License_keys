@@ -9,7 +9,8 @@ export function middleware(request: NextRequest) {
   if (
     pathname === '/login' ||
     pathname.startsWith('/api/auth/') ||
-    pathname.startsWith('/api/external/')
+    pathname.startsWith('/api/external/') ||
+    pathname.startsWith('/api/cron/')
   ) {
     return NextResponse.next();
   }
