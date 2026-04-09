@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { generateLicenseKey } from '@/lib/key-generator';
-import { LICENSE_KEY_FEATURES } from '@/lib/types';
+import { FEATURE_PRESETS, FeaturePreset, LICENSE_KEY_FEATURES } from '@/lib/types';
 import { sendTrialKeyEmail } from '@/lib/email-service';
 import { sendActionNotifications } from '@/lib/slack-service';
-import { KEY_HISTORY_TABLE, LICENSE_KEYS_TABLE } from '@/lib/config';
+import { KEY_HISTORY_TABLE, LICENSE_KEYS_TABLE, SUBSCRIBER_SETTINGS_TABLE } from '@/lib/config';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-const TRIAL_DAYS = 14;
+const DEFAULT_TRIAL_DAYS = 14;
+const VALID_PRESETS: ReadonlySet<string> = new Set<string>(['minimal', 'business', 'enterprise', 'all', 'embed']);
 
 function validateApiKey(request: NextRequest): boolean {
   const authHeader = request.headers.get('authorization');
@@ -35,6 +36,9 @@ interface ExternalGenerateKeyInput {
   goal?: string;
   notes?: string;
   sendEmail?: boolean;
+  preset?: string;
+  slackChannelId?: string;
+  valid_days?: number;
 }
 
 export async function POST(request: NextRequest) {
@@ -56,6 +60,9 @@ export async function POST(request: NextRequest) {
       goal,
       notes,
       sendEmail = true,
+      preset,
+      slackChannelId,
+      valid_days,
     } = body;
 
     if (!email || typeof email !== 'string' || !email.includes('@')) {
@@ -65,16 +72,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (preset && !VALID_PRESETS.has(preset)) {
+      return NextResponse.json(
+        { error: `Invalid preset. Must be one of: ${[...VALID_PRESETS].join(', ')}` },
+        { status: 400 }
+      );
+    }
+
+    if (valid_days !== undefined && (typeof valid_days !== 'number' || valid_days <= 0)) {
+      return NextResponse.json(
+        { error: 'valid_days must be a positive number' },
+        { status: 400 }
+      );
+    }
+
     const licenseKey = generateLicenseKey();
 
+    const trialDays = valid_days ?? DEFAULT_TRIAL_DAYS;
     const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + TRIAL_DAYS);
+    expiryDate.setDate(expiryDate.getDate() + trialDays);
     const expiresAt = expiryDate.toISOString();
 
-    const allFeaturesEnabled = Object.fromEntries(
-      LICENSE_KEY_FEATURES.map((f) => [f, true])
-    );
-    allFeaturesEnabled.customDomainsEnabled = false;
+    let featureSettings: Record<string, boolean>;
+    const usedPreset = preset as FeaturePreset | undefined;
+
+    if (usedPreset && FEATURE_PRESETS[usedPreset]) {
+      featureSettings = { ...FEATURE_PRESETS[usedPreset] } as Record<string, boolean>;
+    } else {
+      featureSettings = Object.fromEntries(
+        LICENSE_KEY_FEATURES.map((f) => [f, true])
+      );
+      featureSettings.customDomainsEnabled = false;
+    }
 
     const { data, error } = await supabaseAdmin
       .from(LICENSE_KEYS_TABLE)
@@ -91,7 +120,7 @@ export async function POST(request: NextRequest) {
         goal: goal || null,
         notes: notes || null,
         activeFlows: activeFlows ?? null,
-        ...allFeaturesEnabled,
+        ...featureSettings,
       })
       .select()
       .single();
@@ -105,13 +134,22 @@ export async function POST(request: NextRequest) {
       action: 'created',
       performed_by: 'external-api',
       details: {
-        valid_days: TRIAL_DAYS,
-        preset: 'all',
+        valid_days: trialDays,
+        preset: usedPreset || 'all',
         isTrial: true,
         keyType: 'development',
         source: 'external-api',
       },
     });
+
+    if (slackChannelId && data) {
+      await supabaseAdmin
+        .from(SUBSCRIBER_SETTINGS_TABLE)
+        .upsert(
+          { email: data.email, slackChannelId, updated_at: new Date().toISOString() },
+          { onConflict: 'email' },
+        );
+    }
 
     if (sendEmail && data) {
       try {
@@ -137,6 +175,7 @@ export async function POST(request: NextRequest) {
         fullName: data.fullName,
         companyName: data.companyName,
         activeFlows: data.activeFlows,
+        preset: usedPreset || 'all',
       },
     });
   } catch (error: any) {

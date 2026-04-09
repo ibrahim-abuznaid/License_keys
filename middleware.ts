@@ -8,6 +8,7 @@ export function middleware(request: NextRequest) {
   // External API routes handle their own authentication via Bearer token
   if (
     pathname === '/login' ||
+    pathname === '/docs' ||
     pathname.startsWith('/api/auth/') ||
     pathname.startsWith('/api/external/') ||
     pathname.startsWith('/api/cron/')
