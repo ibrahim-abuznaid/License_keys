@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { LICENSE_KEYS_TABLE, NOTIFICATION_TEMPLATES_TABLE } from '@/lib/config';
+import { LICENSE_KEYS_TABLE, NOTIFICATION_TEMPLATES_TABLE, CRON_RUN_LOGS_TABLE } from '@/lib/config';
 import { LicenseKey, NotificationTemplate } from '@/lib/types';
 import { sendSlackNotification, hasNotificationBeenSent } from '@/lib/slack-service';
 
@@ -30,6 +30,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const startTime = Date.now();
+
   try {
     const { data: scheduleTemplates, error: tplError } = await supabaseAdmin
       .from(NOTIFICATION_TEMPLATES_TABLE)
@@ -38,7 +40,17 @@ export async function POST(request: NextRequest) {
       .eq('enabled', true);
 
     if (tplError) throw tplError;
+
+    const scheduleCount = scheduleTemplates?.length ?? 0;
+
     if (!scheduleTemplates || scheduleTemplates.length === 0) {
+      await supabaseAdmin.from(CRON_RUN_LOGS_TABLE).insert({
+        trial_keys_processed: 0,
+        notifications_sent: 0,
+        schedule_templates_count: 0,
+        results: [],
+        duration_ms: Date.now() - startTime,
+      });
       return NextResponse.json({ message: 'No schedule-based templates enabled', sent: 0 });
     }
 
@@ -58,7 +70,17 @@ export async function POST(request: NextRequest) {
       .not('expiresAt', 'is', null);
 
     if (error) throw error;
+
+    const keyCount = trialKeys?.length ?? 0;
+
     if (!trialKeys || trialKeys.length === 0) {
+      await supabaseAdmin.from(CRON_RUN_LOGS_TABLE).insert({
+        trial_keys_processed: 0,
+        notifications_sent: 0,
+        schedule_templates_count: scheduleCount,
+        results: [],
+        duration_ms: Date.now() - startTime,
+      });
       return NextResponse.json({ message: 'No trial keys found', sent: 0 });
     }
 
@@ -94,13 +116,33 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    await supabaseAdmin.from(CRON_RUN_LOGS_TABLE).insert({
+      trial_keys_processed: keyCount,
+      notifications_sent: sent,
+      schedule_templates_count: scheduleCount,
+      results,
+      duration_ms: Date.now() - startTime,
+    });
+
     return NextResponse.json({
-      message: `Processed ${trialKeys.length} trial keys against ${scheduleTemplates.length} schedule templates`,
+      message: `Processed ${keyCount} trial keys against ${scheduleCount} schedule templates`,
       sent,
       results,
     });
   } catch (error: any) {
     console.error('Cron check-trials error:', error);
+
+    try {
+      await supabaseAdmin.from(CRON_RUN_LOGS_TABLE).insert({
+        trial_keys_processed: 0,
+        notifications_sent: 0,
+        schedule_templates_count: 0,
+        results: [],
+        error: error.message || 'Unknown error',
+        duration_ms: Date.now() - startTime,
+      });
+    } catch { /* don't mask the original error */ }
+
     return NextResponse.json(
       { error: error.message || 'Failed to check trials' },
       { status: 500 },
