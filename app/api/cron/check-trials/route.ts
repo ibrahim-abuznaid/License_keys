@@ -1,18 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { LICENSE_KEYS_TABLE } from '@/lib/config';
-import { LicenseKey } from '@/lib/types';
+import { LICENSE_KEYS_TABLE, NOTIFICATION_TEMPLATES_TABLE } from '@/lib/config';
+import { LicenseKey, NotificationTemplate } from '@/lib/types';
 import { sendSlackNotification, hasNotificationBeenSent } from '@/lib/slack-service';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-
-const TEMPLATE_BY_DAYS: Record<number, string> = {
-  7: 'trial_expiring_7d',
-  3: 'trial_expiring_3d',
-  0: 'trial_expired',
-  '-2': 'trial_extend_offer',
-};
 
 function validateApiKey(request: NextRequest): boolean {
   const authHeader = request.headers.get('authorization');
@@ -38,6 +31,26 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const { data: scheduleTemplates, error: tplError } = await supabaseAdmin
+      .from(NOTIFICATION_TEMPLATES_TABLE)
+      .select('*')
+      .eq('trigger_type', 'schedule')
+      .eq('enabled', true);
+
+    if (tplError) throw tplError;
+    if (!scheduleTemplates || scheduleTemplates.length === 0) {
+      return NextResponse.json({ message: 'No schedule-based templates enabled', sent: 0 });
+    }
+
+    const templatesByDays = new Map<number, NotificationTemplate[]>();
+    for (const tpl of scheduleTemplates as NotificationTemplate[]) {
+      if (tpl.trigger_days === null) continue;
+      const daysDiff = -(tpl.trigger_days);
+      const existing = templatesByDays.get(daysDiff) || [];
+      existing.push(tpl);
+      templatesByDays.set(daysDiff, existing);
+    }
+
     const { data: trialKeys, error } = await supabaseAdmin
       .from(LICENSE_KEYS_TABLE)
       .select('*')
@@ -68,20 +81,21 @@ export async function POST(request: NextRequest) {
         (expireDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
       );
 
-      for (const [days, templateId] of Object.entries(TEMPLATE_BY_DAYS)) {
-        if (daysDiff !== parseInt(days)) continue;
+      const matchingTemplates = templatesByDays.get(daysDiff);
+      if (!matchingTemplates) continue;
 
-        const alreadySent = await hasNotificationBeenSent(key.key, templateId);
+      for (const template of matchingTemplates) {
+        const alreadySent = await hasNotificationBeenSent(key.key, template.id);
         if (alreadySent) continue;
 
-        const result = await sendSlackNotification({ licenseKey: key, templateId });
-        results.push({ key: key.key, templateId, success: result.success });
+        const result = await sendSlackNotification({ licenseKey: key, templateId: template.id });
+        results.push({ key: key.key, templateId: template.id, success: result.success });
         if (result.success) sent++;
       }
     }
 
     return NextResponse.json({
-      message: `Processed ${trialKeys.length} trial keys`,
+      message: `Processed ${trialKeys.length} trial keys against ${scheduleTemplates.length} schedule templates`,
       sent,
       results,
     });

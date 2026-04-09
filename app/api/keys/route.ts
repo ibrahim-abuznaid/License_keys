@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { generateLicenseKey } from '@/lib/key-generator';
 import { CreateLicenseKeyInput, FEATURE_PRESETS, LICENSE_KEY_FEATURES, LicenseKeyFeature } from '@/lib/types';
 import { sendTrialKeyEmail } from '@/lib/email-service';
-import { sendSlackNotification } from '@/lib/slack-service';
+import { sendActionNotifications } from '@/lib/slack-service';
 import { KEY_HISTORY_TABLE, LICENSE_KEYS_TABLE, SUBSCRIBER_SETTINGS_TABLE } from '@/lib/config';
 
 // Disable caching for this route
@@ -153,10 +153,8 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    if (isTrial && data) {
-      sendSlackNotification({ licenseKey: data, templateId: 'trial_started' }).catch(
-        (err) => console.error('Failed to send trial_started Slack notification:', err),
-      );
+    if (data) {
+      sendActionNotifications(data, 'key_created').catch(() => {});
     }
 
     return NextResponse.json({ data });

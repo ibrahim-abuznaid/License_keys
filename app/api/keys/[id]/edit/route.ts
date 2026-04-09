@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { sendActionNotifications } from '@/lib/slack-service';
 import { KEY_HISTORY_TABLE, LICENSE_KEYS_TABLE, SUBSCRIBER_SETTINGS_TABLE } from '@/lib/config';
 
 export async function PUT(
@@ -88,6 +89,8 @@ export async function PUT(
       action: 'updated',
       details: { updated_fields: Object.keys(updateData) },
     });
+
+    sendActionNotifications(data, 'key_edited').catch(() => {});
 
     return NextResponse.json(
       { success: true, data },
