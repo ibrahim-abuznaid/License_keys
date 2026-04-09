@@ -239,6 +239,7 @@ export interface CreateLicenseKeyInput extends Partial<Record<LicenseKeyFeature,
   notes?: string;
   preset?: FeaturePreset;
   activeFlows?: number | null;
+  slackChannelId?: string;
 }
 
 export interface ExtendKeyInput {
@@ -258,4 +259,18 @@ export interface KeyHistory {
   performed_by: string | null;
   performed_at: string;
   details: Record<string, any> | null;
+}
+
+export interface NotificationTemplate {
+  id: string;
+  label: string;
+  message: string;
+  enabled: boolean;
+  updated_at: string;
+}
+
+export interface SubscriberSettings {
+  email: string;
+  slackChannelId: string | null;
+  updated_at: string;
 }

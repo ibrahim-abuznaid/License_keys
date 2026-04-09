@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { KEY_HISTORY_TABLE, LICENSE_KEYS_TABLE } from '@/lib/config';
+import { KEY_HISTORY_TABLE, LICENSE_KEYS_TABLE, SUBSCRIBER_SETTINGS_TABLE } from '@/lib/config';
 
 export async function PUT(
   request: NextRequest,
@@ -71,6 +71,15 @@ export async function PUT(
 
     if (error) {
       throw error;
+    }
+
+    if (body.slackChannelId !== undefined && data?.email) {
+      await supabaseAdmin
+        .from(SUBSCRIBER_SETTINGS_TABLE)
+        .upsert(
+          { email: data.email, slackChannelId: body.slackChannelId || null, updated_at: new Date().toISOString() },
+          { onConflict: 'email' },
+        );
     }
 
     // Log the action

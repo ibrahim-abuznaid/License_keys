@@ -8,3 +8,7 @@ export const LICENSE_KEYS_TABLE =
 export const KEY_HISTORY_TABLE =
   process.env.SUPABASE_TABLE_KEY_HISTORY ?? 'key_history';
 
+export const NOTIFICATION_TEMPLATES_TABLE = 'notification_templates';
+
+export const SUBSCRIBER_SETTINGS_TABLE = 'subscriber_settings';
+

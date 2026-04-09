@@ -8,6 +8,7 @@ import { InputModal, ConfirmModal, AlertModal } from '@/components/Modal';
 import { EditKeyModal } from '@/components/EditKeyModal';
 import { EmailDraftModal } from '@/components/EmailDraftModal';
 import ReactivateKeyModal from '@/components/ReactivateKeyModal';
+import { SubscriberSlackSettings } from '@/components/SubscriberSlackSettings';
 
 export default function UserDetailPage() {
   const params = useParams();
@@ -402,6 +403,9 @@ export default function UserDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Slack Settings */}
+      <SubscriberSlackSettings email={email} />
 
       {keys.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-12 text-center">
