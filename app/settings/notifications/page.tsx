@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { NotificationTemplate } from '@/lib/types';
 
 const AVAILABLE_VARIABLES = [
@@ -49,7 +50,7 @@ interface CronRunLog {
   trial_keys_processed: number;
   notifications_sent: number;
   schedule_templates_count: number;
-  results: Array<{ key: string; templateId: string; success: boolean }>;
+  results: Array<{ key: string; email?: string; templateId: string; success: boolean }>;
   error: string | null;
   duration_ms: number;
 }
@@ -647,7 +648,18 @@ function ScheduleLogsTab() {
                   <tbody className="divide-y divide-gray-100">
                     {log.results.map((r, i) => (
                       <tr key={i}>
-                        <td className="py-2 pr-4 font-mono text-xs text-gray-700">{r.key}</td>
+                        <td className="py-2 pr-4 font-mono text-xs">
+                          {r.email ? (
+                            <Link
+                              href={`/users/${encodeURIComponent(r.email)}`}
+                              className="text-indigo-600 hover:text-indigo-800 hover:underline"
+                            >
+                              {r.key}
+                            </Link>
+                          ) : (
+                            <span className="text-gray-700">{r.key}</span>
+                          )}
+                        </td>
                         <td className="py-2 pr-4 text-xs text-gray-700">{r.templateId}</td>
                         <td className="py-2">
                           {r.success ? (
