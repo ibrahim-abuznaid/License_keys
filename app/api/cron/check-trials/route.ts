@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     );
 
     let sent = 0;
-    const results: Array<{ key: string; templateId: string; success: boolean }> = [];
+    const results: Array<{ key: string; email: string; templateId: string; success: boolean }> = [];
 
     for (const key of trialKeys as LicenseKey[]) {
       if (!key.expiresAt) continue;
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
         if (alreadySent) continue;
 
         const result = await sendSlackNotification({ licenseKey: key, templateId: template.id });
-        results.push({ key: key.key, templateId: template.id, success: result.success });
+        results.push({ key: key.key, email: key.email, templateId: template.id, success: result.success });
         if (result.success) sent++;
       }
     }
