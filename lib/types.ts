@@ -266,6 +266,9 @@ export interface NotificationTemplate {
   label: string;
   message: string;
   enabled: boolean;
+  trigger_type: 'action' | 'schedule';
+  trigger_action: string | null;
+  trigger_days: number | null;
   updated_at: string;
 }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { sendActionNotifications } from '@/lib/slack-service';
 import { KEY_HISTORY_TABLE, LICENSE_KEYS_TABLE } from '@/lib/config';
 
 export async function POST(
@@ -78,6 +79,8 @@ export async function POST(
         previous_expiry: currentKey.expiresAt,
       },
     });
+
+    sendActionNotifications(data, 'key_reactivated').catch(() => {});
 
     return NextResponse.json({ data });
   } catch (error: any) {

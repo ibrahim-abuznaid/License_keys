@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { generateLicenseKey } from '@/lib/key-generator';
 import { sendDealClosedEmail, sendCustomEmail } from '@/lib/email-service';
+import { sendActionNotifications } from '@/lib/slack-service';
 import { KEY_HISTORY_TABLE, LICENSE_KEYS_TABLE } from '@/lib/config';
 
 export async function POST(
@@ -143,6 +144,8 @@ export async function POST(
         // Don't fail the request if email fails
       }
     }
+
+    sendActionNotifications(developmentKey, 'deal_closed').catch(() => {});
 
     return NextResponse.json({ 
       data: {

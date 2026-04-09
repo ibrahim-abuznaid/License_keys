@@ -47,7 +47,7 @@ export async function getTemplate(
   return data as NotificationTemplate;
 }
 
-async function getSlackChannelId(email: string): Promise<string | null> {
+export async function getSlackChannelId(email: string): Promise<string | null> {
   const { data } = await supabaseAdmin
     .from(SUBSCRIBER_SETTINGS_TABLE)
     .select('slackChannelId')
@@ -131,4 +131,24 @@ export async function hasNotificationBeenSent(
     .limit(1);
 
   return (data?.length ?? 0) > 0;
+}
+
+export async function sendActionNotifications(
+  licenseKey: LicenseKey,
+  action: string,
+): Promise<void> {
+  try {
+    const { data: templates } = await supabaseAdmin
+      .from(NOTIFICATION_TEMPLATES_TABLE)
+      .select('*')
+      .eq('trigger_type', 'action')
+      .eq('trigger_action', action)
+      .eq('enabled', true);
+
+    for (const template of templates || []) {
+      await sendSlackNotification({ licenseKey, templateId: template.id });
+    }
+  } catch (error) {
+    console.error(`Failed to send action notifications for "${action}":`, error);
+  }
 }

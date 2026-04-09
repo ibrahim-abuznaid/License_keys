@@ -8,6 +8,7 @@ import { InputModal, ConfirmModal, AlertModal } from '@/components/Modal';
 import { EditKeyModal } from '@/components/EditKeyModal';
 import { EmailDraftModal } from '@/components/EmailDraftModal';
 import ReactivateKeyModal from '@/components/ReactivateKeyModal';
+import { SlackDraftModal } from '@/components/SlackDraftModal';
 
 export default function KeyManagementTable() {
   const router = useRouter();
@@ -30,6 +31,7 @@ export default function KeyManagementTable() {
     developmentKey?: LicenseKey;
     activeFlowsLimit?: number;
   }>({ isOpen: false, key: null, emailType: 'trial' });
+  const [slackDraftModal, setSlackDraftModal] = useState<{ isOpen: boolean; key: LicenseKey | null }>({ isOpen: false, key: null });
   const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; type: 'success' | 'error' | 'info' }>({ 
     isOpen: false, title: '', message: '', type: 'info' 
   });
@@ -225,6 +227,31 @@ export default function KeyManagementTable() {
       }
     } catch (error) {
       setAlertModal({ isOpen: true, title: 'Error', message: 'Failed to send email', type: 'error' });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleSendSlack = async (message: string) => {
+    const keyValue = slackDraftModal.key?.key;
+    if (!keyValue) return;
+
+    setActionLoading(keyValue);
+    try {
+      const response = await fetch(`/api/keys/${keyValue}/send-slack`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message }),
+      });
+
+      if (response.ok) {
+        setAlertModal({ isOpen: true, title: 'Success', message: 'Slack message sent successfully!', type: 'success' });
+      } else {
+        const result = await response.json();
+        setAlertModal({ isOpen: true, title: 'Error', message: result.error, type: 'error' });
+      }
+    } catch (error) {
+      setAlertModal({ isOpen: true, title: 'Error', message: 'Failed to send Slack message', type: 'error' });
     } finally {
       setActionLoading(null);
     }
@@ -447,14 +474,24 @@ export default function KeyManagementTable() {
                         </>
                       )}
                       {getKeyStatus(key) === 'active' && (
-                        <button
-                          onClick={() => setEmailDraftModal({ isOpen: true, key, emailType: 'trial' })}
-                          disabled={actionLoading === key.key}
-                          className="text-indigo-600 hover:text-indigo-800 disabled:text-gray-400"
-                          title="Send Email"
-                        >
-                          Email
-                        </button>
+                        <>
+                          <button
+                            onClick={() => setEmailDraftModal({ isOpen: true, key, emailType: 'trial' })}
+                            disabled={actionLoading === key.key}
+                            className="text-indigo-600 hover:text-indigo-800 disabled:text-gray-400"
+                            title="Send Email"
+                          >
+                            Email
+                          </button>
+                          <button
+                            onClick={() => setSlackDraftModal({ isOpen: true, key })}
+                            disabled={actionLoading === key.key}
+                            className="text-purple-600 hover:text-purple-800 disabled:text-gray-400"
+                            title="Send Slack"
+                          >
+                            Slack
+                          </button>
+                        </>
                       )}
                       {getKeyStatus(key) === 'disabled' ? (
                         <button
@@ -560,6 +597,13 @@ export default function KeyManagementTable() {
         keyValue={reactivateModal.key?.key || ''}
         email={reactivateModal.key?.email || ''}
         isTrial={reactivateModal.key?.isTrial || false}
+      />
+
+      <SlackDraftModal
+        isOpen={slackDraftModal.isOpen}
+        onClose={() => setSlackDraftModal({ isOpen: false, key: null })}
+        onSend={handleSendSlack}
+        licenseKey={slackDraftModal.key}
       />
     </div>
   );

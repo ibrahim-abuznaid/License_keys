@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { generateLicenseKey } from '@/lib/key-generator';
 import { LICENSE_KEY_FEATURES } from '@/lib/types';
 import { sendTrialKeyEmail } from '@/lib/email-service';
-import { sendSlackNotification } from '@/lib/slack-service';
+import { sendActionNotifications } from '@/lib/slack-service';
 import { KEY_HISTORY_TABLE, LICENSE_KEYS_TABLE } from '@/lib/config';
 
 export const dynamic = 'force-dynamic';
@@ -122,9 +122,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (data) {
-      sendSlackNotification({ licenseKey: data, templateId: 'trial_started' }).catch(
-        (err) => console.error('Failed to send trial_started Slack notification:', err),
-      );
+      sendActionNotifications(data, 'key_created').catch(() => {});
     }
 
     return NextResponse.json({

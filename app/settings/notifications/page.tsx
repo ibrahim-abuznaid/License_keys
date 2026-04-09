@@ -12,6 +12,37 @@ const AVAILABLE_VARIABLES = [
   { name: '{{licenseKey}}', description: 'License key value' },
 ];
 
+const ACTION_OPTIONS = [
+  { value: 'key_created', label: 'Key Created' },
+  { value: 'deal_closed', label: 'Deal Closed' },
+  { value: 'key_disabled', label: 'Key Disabled' },
+  { value: 'key_reactivated', label: 'Key Reactivated' },
+  { value: 'key_extended', label: 'Key Extended' },
+  { value: 'key_edited', label: 'Key Edited' },
+];
+
+const DEFAULT_TEMPLATE_IDS = new Set([
+  'trial_started',
+  'trial_expiring_7d',
+  'trial_expiring_3d',
+  'trial_expired',
+  'trial_extend_offer',
+]);
+
+function getTriggerLabel(template: NotificationTemplate): string {
+  if (template.trigger_type === 'action') {
+    const action = ACTION_OPTIONS.find((a) => a.value === template.trigger_action);
+    return `Triggered by: ${action?.label || template.trigger_action || 'Unknown'}`;
+  }
+  if (template.trigger_type === 'schedule') {
+    const days = template.trigger_days ?? 0;
+    if (days < 0) return `Scheduled: ${Math.abs(days)} day${Math.abs(days) !== 1 ? 's' : ''} before expiry`;
+    if (days === 0) return 'Scheduled: On expiry day';
+    return `Scheduled: ${days} day${days !== 1 ? 's' : ''} after expiry`;
+  }
+  return '';
+}
+
 export default function NotificationSettingsPage() {
   const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,6 +50,16 @@ export default function NotificationSettingsPage() {
   const [editedMessages, setEditedMessages] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  const [newTemplate, setNewTemplate] = useState({
+    label: '',
+    message: '',
+    trigger_type: 'action' as 'action' | 'schedule',
+    trigger_action: 'key_created',
+    trigger_days: -7,
+  });
 
   useEffect(() => {
     fetchTemplates();
@@ -89,6 +130,60 @@ export default function NotificationSettingsPage() {
     }
   };
 
+  const handleCreate = async () => {
+    setError(null);
+    setSuccessMessage(null);
+    setSaving((prev) => ({ ...prev, _new: true }));
+    try {
+      const payload = {
+        label: newTemplate.label,
+        message: newTemplate.message,
+        trigger_type: newTemplate.trigger_type,
+        trigger_action: newTemplate.trigger_type === 'action' ? newTemplate.trigger_action : undefined,
+        trigger_days: newTemplate.trigger_type === 'schedule' ? newTemplate.trigger_days : undefined,
+      };
+      const res = await fetch('/api/settings/notification-templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const result = await res.json();
+        throw new Error(result.error || 'Failed to create');
+      }
+      const result = await res.json();
+      setTemplates((prev) => [...prev, result.data]);
+      setEditedMessages((prev) => ({ ...prev, [result.data.id]: result.data.message }));
+      setSuccessMessage(`Notification "${newTemplate.label}" created`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+      setNewTemplate({ label: '', message: '', trigger_type: 'action', trigger_action: 'key_created', trigger_days: -7 });
+      setShowCreateForm(false);
+    } catch (err: any) {
+      setError(err.message || 'Failed to create notification');
+    } finally {
+      setSaving((prev) => ({ ...prev, _new: false }));
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm(`Delete notification "${id}"? This cannot be undone.`)) return;
+    setDeleting(id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/settings/notification-templates?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Failed to delete');
+      setTemplates((prev) => prev.filter((t) => t.id !== id));
+      setSuccessMessage(`Notification "${id}" deleted`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch {
+      setError('Failed to delete template');
+    } finally {
+      setDeleting(null);
+    }
+  };
+
   const hasChanges = (id: string) => {
     const original = templates.find((t) => t.id === id);
     return original ? original.message !== editedMessages[id] : false;
@@ -104,12 +199,19 @@ export default function NotificationSettingsPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Slack Notification Templates</h1>
-        <p className="mt-2 text-sm text-gray-600">
-          Configure the Slack messages sent at different stages of a trial lifecycle.
-          These messages are sent via ActivePieces to the Slack channel associated with each license key.
-        </p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Slack Notification Templates</h1>
+          <p className="mt-2 text-sm text-gray-600">
+            Configure Slack messages sent automatically when actions happen or on a schedule relative to trial expiry.
+          </p>
+        </div>
+        <button
+          onClick={() => setShowCreateForm((v) => !v)}
+          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+        >
+          {showCreateForm ? 'Cancel' : '+ Create Notification'}
+        </button>
       </div>
 
       {error && (
@@ -121,6 +223,116 @@ export default function NotificationSettingsPage() {
       {successMessage && (
         <div className="mb-4 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg">
           {successMessage}
+        </div>
+      )}
+
+      {/* Create New Notification Form */}
+      {showCreateForm && (
+        <div className="mb-6 bg-white rounded-lg shadow-sm border border-indigo-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Create New Notification</h3>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Label</label>
+              <input
+                type="text"
+                value={newTemplate.label}
+                onChange={(e) => setNewTemplate((p) => ({ ...p, label: e.target.value }))}
+                placeholder="e.g. Deal Closed Alert"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Trigger Type</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    checked={newTemplate.trigger_type === 'action'}
+                    onChange={() => setNewTemplate((p) => ({ ...p, trigger_type: 'action' }))}
+                    className="text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-sm text-gray-700">When an action happens</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    checked={newTemplate.trigger_type === 'schedule'}
+                    onChange={() => setNewTemplate((p) => ({ ...p, trigger_type: 'schedule' }))}
+                    className="text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-sm text-gray-700">Based on schedule (relative to expiry)</span>
+                </label>
+              </div>
+            </div>
+
+            {newTemplate.trigger_type === 'action' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Action</label>
+                <select
+                  value={newTemplate.trigger_action}
+                  onChange={(e) => setNewTemplate((p) => ({ ...p, trigger_action: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  {ACTION_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {newTemplate.trigger_type === 'schedule' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Days relative to expiry</label>
+                <input
+                  type="number"
+                  value={newTemplate.trigger_days}
+                  onChange={(e) => setNewTemplate((p) => ({ ...p, trigger_days: parseInt(e.target.value) || 0 }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Negative = before expiry (e.g. -7 for 7 days before), 0 = on expiry day, positive = after expiry
+                </p>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+              <textarea
+                value={newTemplate.message}
+                onChange={(e) => setNewTemplate((p) => ({ ...p, message: e.target.value }))}
+                rows={3}
+                placeholder="Use {{variables}} in your message..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              {AVAILABLE_VARIABLES.map((v) => (
+                <button
+                  key={v.name}
+                  type="button"
+                  onClick={() => setNewTemplate((p) => ({ ...p, message: p.message + ' ' + v.name }))}
+                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100"
+                  title={v.description}
+                >
+                  {v.name}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={handleCreate}
+                disabled={!newTemplate.label.trim() || !newTemplate.message.trim() || saving['_new']}
+                className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+              >
+                {saving['_new'] ? 'Creating...' : 'Create Notification'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -152,7 +364,7 @@ export default function NotificationSettingsPage() {
               template.enabled ? 'border-gray-200' : 'border-gray-100 bg-gray-50'
             }`}
           >
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-3">
                 <h3 className="text-base font-semibold text-gray-900">
                   {template.label}
@@ -161,20 +373,45 @@ export default function NotificationSettingsPage() {
                   {template.id}
                 </span>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={template.enabled}
-                  onChange={(e) => handleToggle(template.id, e.target.checked)}
-                  disabled={saving[template.id]}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                <span className="ml-2 text-sm font-medium text-gray-700">
-                  {template.enabled ? 'Enabled' : 'Disabled'}
-                </span>
-              </label>
+              <div className="flex items-center gap-3">
+                {!DEFAULT_TEMPLATE_IDS.has(template.id) && (
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(template.id)}
+                    disabled={deleting === template.id}
+                    className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
+                  >
+                    {deleting === template.id ? 'Deleting...' : 'Delete'}
+                  </button>
+                )}
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={template.enabled}
+                    onChange={(e) => handleToggle(template.id, e.target.checked)}
+                    disabled={saving[template.id]}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                  <span className="ml-2 text-sm font-medium text-gray-700">
+                    {template.enabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                </label>
+              </div>
             </div>
+
+            <p className="text-xs text-gray-500 mb-3">
+              {template.trigger_type === 'action' && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                  {getTriggerLabel(template)}
+                </span>
+              )}
+              {template.trigger_type === 'schedule' && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                  {getTriggerLabel(template)}
+                </span>
+              )}
+            </p>
 
             <textarea
               value={editedMessages[template.id] || ''}
