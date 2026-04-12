@@ -118,10 +118,13 @@ export async function GET(request: NextRequest) {
       const subscriber = subscribersMap.get(email)!;
       subscriber.totalKeys++;
       
-      // Count trial keys based on isTrial flag instead of keyType
-      if (typedKey.isTrial) subscriber.trialKeys++;
-      if (typedKey.keyType === 'development') subscriber.developmentKeys++;
-      if (typedKey.keyType === 'production') subscriber.productionKeys++;
+      if (typedKey.isTrial) {
+        subscriber.trialKeys++;
+      } else if (typedKey.keyType === 'development') {
+        subscriber.developmentKeys++;
+      } else if (typedKey.keyType === 'production') {
+        subscriber.productionKeys++;
+      }
       
       if (status === 'active') subscriber.activeKeys++;
       
