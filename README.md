@@ -105,7 +105,7 @@ npm install
 ### 3. Set Up Email Webhook (Activepieces)
 
 The system uses your Activepieces webhook to send emails:
-1. The webhook URL is already configured: `https://cloud.activepieces.com/api/v1/webhooks/plumehWOInBubDWJisYQA`
+1. Set `EMAIL_WEBHOOK_URL` in your environment variables to your ActivePieces webhook URL
 2. Ensure you have an Activepieces flow that:
    - Receives webhook with fields: `email`, `subject`, `body`
    - Sends email using Gmail/SendGrid/SMTP piece
@@ -122,7 +122,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 
 # Email Webhook (Activepieces)
-EMAIL_WEBHOOK_URL=https://cloud.activepieces.com/api/v1/webhooks/plumehWOInBubDWJisYQA
+EMAIL_WEBHOOK_URL=https://cloud.activepieces.com/api/v1/webhooks/YOUR_WEBHOOK_ID
 
 # Application Settings
 NEXT_PUBLIC_APP_URL=http://localhost:3000

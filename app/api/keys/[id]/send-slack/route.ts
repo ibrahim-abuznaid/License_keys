@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { KEY_HISTORY_TABLE, LICENSE_KEYS_TABLE, SUBSCRIBER_SETTINGS_TABLE } from '@/lib/config';
 
-const slackWebhookUrl =
-  process.env.SLACK_WEBHOOK_URL ||
-  'https://cloud.activepieces.com/api/v1/webhooks/zmZ8svwRSEivvYK6XHhrR';
+const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL || '';
 
 export async function POST(
   request: NextRequest,

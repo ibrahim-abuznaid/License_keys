@@ -64,7 +64,7 @@ The system uses Activepieces webhooks to send emails. You need to have an Active
 2. Sends an email using the Gmail/SendGrid/SMTP piece
 
 Your webhook URL is already configured in the code:
-`https://cloud.activepieces.com/api/v1/webhooks/plumehWOInBubDWJisYQA`
+`https://cloud.activepieces.com/api/v1/webhooks/YOUR_WEBHOOK_ID`
 
 If you need to change this or create a new webhook flow:
 1. Log into your Activepieces dashboard
@@ -94,7 +94,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 
 # Email Webhook (Activepieces)
-EMAIL_WEBHOOK_URL=https://cloud.activepieces.com/api/v1/webhooks/plumehWOInBubDWJisYQA
+EMAIL_WEBHOOK_URL=https://cloud.activepieces.com/api/v1/webhooks/YOUR_WEBHOOK_ID
 
 # Application Settings
 NEXT_PUBLIC_APP_URL=http://localhost:3000
