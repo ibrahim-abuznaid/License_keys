@@ -75,27 +75,22 @@ export function getKeyStatus(key: LicenseKey): KeyStatus {
   if (!key.expiresAt) {
     return 'active'; // null means subscribed (no expiry)
   }
-  const expiresAt = new Date(key.expiresAt);
+
   const now = new Date();
-  
-  // Use UTC dates to avoid timezone issues
-  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
-  const expireDate = new Date(Date.UTC(expiresAt.getUTCFullYear(), expiresAt.getUTCMonth(), expiresAt.getUTCDate(), 0, 0, 0, 0));
-  
-  const daysDiff = Math.floor((expireDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  
-  if (daysDiff < 0) {
-    // Expired in the past
-    if (daysDiff >= -1) {
-      // Expired today or yesterday (likely manually disabled)
-      return 'disabled';
-    }
-    return 'expired';
-  } else if (daysDiff === 0) {
-    // Expires today (manually disabled)
-    return 'disabled';
+  const expiresAt = new Date(key.expiresAt);
+
+  if (now.getTime() < expiresAt.getTime()) {
+    return 'active';
   }
-  return 'active';
+
+  // Key has expired — classify by how long ago
+  const msAgo = now.getTime() - expiresAt.getTime();
+  const daysAgo = msAgo / (1000 * 60 * 60 * 24);
+
+  if (daysAgo <= 2) {
+    return 'disabled'; // recently expired or manually disabled
+  }
+  return 'expired';
 }
 
 // Feature presets for convenience
