@@ -2,9 +2,7 @@ import { LicenseKey, NotificationTemplate } from './types';
 import { supabaseAdmin } from './supabase';
 import { KEY_HISTORY_TABLE, NOTIFICATION_TEMPLATES_TABLE, SUBSCRIBER_SETTINGS_TABLE } from './config';
 
-const slackWebhookUrl =
-  process.env.SLACK_WEBHOOK_URL ||
-  'https://cloud.activepieces.com/api/v1/webhooks/zmZ8svwRSEivvYK6XHhrR';
+const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL || '';
 
 function resolveTemplate(template: string, key: LicenseKey): string {
   const expiresAtFormatted = key.expiresAt

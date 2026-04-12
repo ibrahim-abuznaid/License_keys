@@ -1,6 +1,6 @@
 import { LicenseKey } from './types';
 
-const webhookUrl = process.env.EMAIL_WEBHOOK_URL || 'https://cloud.activepieces.com/api/v1/webhooks/plumehWOInBubDWJisYQA';
+const webhookUrl = process.env.EMAIL_WEBHOOK_URL || '';
 const fromEmail = process.env.FROM_EMAIL || 'noreply@activepieces.com';
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 

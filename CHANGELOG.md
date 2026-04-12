@@ -38,7 +38,7 @@ If you have an existing installation using Resend:
    
    Add:
    ```env
-   EMAIL_WEBHOOK_URL=https://cloud.activepieces.com/api/v1/webhooks/plumehWOInBubDWJisYQA
+   EMAIL_WEBHOOK_URL=https://cloud.activepieces.com/api/v1/webhooks/YOUR_WEBHOOK_ID
    ```
 
 3. **Set Up Activepieces Flow**
