@@ -61,7 +61,7 @@ export function SlackDraftModal({
   useEffect(() => {
     if (isOpen && licenseKey) {
       const defaultMsg = `Update for {{fullName}} ({{email}}) - Company: {{companyName}}. License key: {{licenseKey}}`;
-      setMessage(resolveVariables(defaultMsg, licenseKey));
+      setMessage(defaultMsg);
 
       setLoadingChannel(true);
       fetch(`/api/subscribers/${encodeURIComponent(licenseKey.email)}/settings`)
@@ -75,9 +75,11 @@ export function SlackDraftModal({
   }, [isOpen, licenseKey]);
 
   const handleSend = async () => {
+    if (!licenseKey) return;
     setLoading(true);
     try {
-      await onSend(message);
+      const resolved = resolveVariables(message, licenseKey);
+      await onSend(resolved);
       onClose();
     } catch (error) {
       console.error('Failed to send Slack message:', error);
@@ -137,6 +139,15 @@ export function SlackDraftModal({
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-mono text-sm"
             />
           </div>
+
+          {message.includes('{{') && (
+            <div className="mb-4 bg-green-50 rounded-lg p-3 border border-green-200">
+              <p className="text-xs font-semibold text-green-700 mb-1">Preview</p>
+              <p className="text-sm text-green-900 whitespace-pre-wrap">
+                {resolveVariables(message, licenseKey)}
+              </p>
+            </div>
+          )}
 
           <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
             <p className="text-xs font-semibold text-gray-600 mb-2">Available Variables</p>
